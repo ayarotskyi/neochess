@@ -1,9 +1,10 @@
-import { ChakraProvider, defaultSystem, Stack } from '@chakra-ui/react';
+import { ChakraProvider, Stack } from '@chakra-ui/react';
 import Root from './components/Root';
+import system from './system';
 
 const App = () => {
   return (
-    <ChakraProvider value={defaultSystem}>
+    <ChakraProvider value={system}>
       <Stack height="100vh" flex={1} bg="black">
         <Stack
           position="absolute"
