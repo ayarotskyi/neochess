@@ -13,7 +13,7 @@ const App = () => {
           bg="linear-gradient(135deg, rgba(88, 28, 135, 0.2) 0%, #000000 50%, rgba(22, 78, 99, 0.2) 100%)"
           zIndex={1}
         />
-        <Root zIndex={2} />
+        <Root zIndex={2} maxH="100%" />
       </Stack>
     </ChakraProvider>
   );
