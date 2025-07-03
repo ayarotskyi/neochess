@@ -1,0 +1,4 @@
+/* stacks and wraps have non-zero gap in chakra ui */
+* {
+  gap: 0 !important
+}

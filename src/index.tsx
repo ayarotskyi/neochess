@@ -4,6 +4,7 @@ import App from './App';
 import '@fontsource-variable/geist-mono';
 import '@fontsource-variable/geist';
 import './scroller.css';
+import './removeGaps.css';
 
 const rootEl = document.getElementById('root');
 if (rootEl) {
