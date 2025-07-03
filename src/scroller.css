@@ -1,0 +1,24 @@
+.scroller::-webkit-scrollbar {
+  width: 5px;
+}
+.scroller::-webkit-scrollbar-track {
+  width: 0px;
+}
+
+.scroller::-webkit-scrollbar-thumb {
+    background: var(--var1);
+    border-radius: 8px;
+}
+
+@property --var1 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0000;
+}
+.scroller {
+  scrollbar-gutter: stable both-edges;
+  transition: --var1 .3s;
+}
+.scroller:hover {
+  --var1: #aaa;
+}
