@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import '@fontsource-variable/geist-mono';
+import '@fontsource-variable/geist';
 import './scroller.css';
 
 const rootEl = document.getElementById('root');
