@@ -32,7 +32,7 @@ const Move = ({ move, ...props }: Props) => {
       <HStack>
         <Text
           flex={1}
-          fontFamily="Geist Mono Variable"
+          textStyle="mono"
           fontWeight={700}
           fontSize="16px"
           lineHeight="24px"
@@ -51,7 +51,7 @@ const Move = ({ move, ...props }: Props) => {
           px="11px"
         >
           <Text
-            fontFamily="Geist Variable"
+            textStyle="default"
             fontWeight={600}
             fontSize="12px"
             lineHeight="16px"
@@ -68,7 +68,7 @@ const Move = ({ move, ...props }: Props) => {
           px="11px"
         >
           <Text
-            fontFamily="Geist Variable"
+            textStyle="default"
             fontWeight={600}
             fontSize="12px"
             lineHeight="16px"

@@ -16,6 +16,16 @@ const textStyles = defineTextStyles({
       textTransform: 'uppercase',
     },
   },
+  mono: {
+    value: {
+      fontFamily: 'Geist Mono Variable',
+    },
+  },
+  default: {
+    value: {
+      fontFamily: 'Geist Variable',
+    },
+  },
 });
 
 const config = defineConfig({
