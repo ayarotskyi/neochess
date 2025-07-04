@@ -69,7 +69,6 @@ const SquareComponent = ({ square, piece, ...props }: Props) => {
         <PieceComponent
           height="60%"
           width="60%"
-          color={piece.color === 'black' ? 'black' : 'white'}
           filter="drop-shadow(0 0 10px rgba(255,255,255,0.8))"
         />
       )}
