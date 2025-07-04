@@ -1,5 +1,6 @@
 import {
   Button,
+  Flex,
   HStack,
   Stack,
   Text,
@@ -16,6 +17,7 @@ const PositionAnalyzer = (props: StackProps) => {
       background="rgba(17, 24, 39, 0.5)"
       borderRadius={8}
       p="24px"
+      spaceY="24px"
       justify="stretch"
       {...props}
     >
@@ -67,7 +69,9 @@ const PositionAnalyzer = (props: StackProps) => {
           </Button>
         </HStack>
       </VStack>
-      <Board />
+      <Flex flex={1} justify="center">
+        <Board />
+      </Flex>
     </Stack>
   );
 };
