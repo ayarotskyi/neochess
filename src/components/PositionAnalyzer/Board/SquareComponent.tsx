@@ -1,3 +1,4 @@
+import useDraggable, { type DropCallback } from '@/hooks/useDraggable';
 import BlackBishop from '@/icons/BlackBishop';
 import BlackKing from '@/icons/BlackKing';
 import BlackKnight from '@/icons/BlackKnight';
@@ -18,7 +19,7 @@ import {
   type Role,
   type Square,
 } from 'chessops';
-import type { SVGProps } from 'react';
+import { type SVGProps } from 'react';
 import type React from 'react';
 
 export type ColorRole = `${Color}_${Role}`;
@@ -40,15 +41,18 @@ const PieceComponents: Record<ColorRole, React.FC<SVGProps<SVGSVGElement>>> = {
 
 type Props = StackProps & {
   square: Square;
+  dropCallback: DropCallback;
   piece?: Piece;
 };
 
-const SquareComponent = ({ square, piece, ...props }: Props) => {
-  const squareName = makeSquare(square);
+const SquareComponent = ({ square, piece, dropCallback, ...props }: Props) => {
   const color: Color =
     ((square % 8) + Math.floor(square / 8)) % 2 === 0 ? 'black' : 'white';
   const PieceComponent =
     piece && PieceComponents[`${piece.color}_${piece.role}`];
+
+  const { draggableElementRefCallback, targetElementRefCallback } =
+    useDraggable(dropCallback);
   return (
     <Flex
       width="12.5%"
@@ -63,14 +67,26 @@ const SquareComponent = ({ square, piece, ...props }: Props) => {
       position="relative"
       align="center"
       justify="center"
+      ref={targetElementRefCallback}
       {...props}
     >
       {PieceComponent && (
-        <PieceComponent
-          height="60%"
-          width="60%"
-          filter="drop-shadow(0 0 10px rgba(255,255,255,0.8))"
-        />
+        <Flex
+          width="100%"
+          height="100%"
+          position="absolute"
+          align="center"
+          justify="center"
+          ref={draggableElementRefCallback}
+        >
+          <PieceComponent
+            height="60%"
+            width="60%"
+            filter="drop-shadow(0 0 10px rgba(255,255,255,0.8))"
+            pointerEvents="none"
+            style={{ zIndex: 2 }}
+          />
+        </Flex>
       )}
       <Text
         textStyle="mono"
@@ -83,7 +99,7 @@ const SquareComponent = ({ square, piece, ...props }: Props) => {
         userSelect="none"
         position="absolute"
       >
-        {squareName}
+        {makeSquare(square)}
       </Text>
     </Flex>
   );

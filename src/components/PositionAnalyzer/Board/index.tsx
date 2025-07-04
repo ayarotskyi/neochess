@@ -3,6 +3,7 @@ import { FILE_NAMES, parseSquare, RANK_NAMES, type SquareName } from 'chessops';
 import SquareComponent from './SquareComponent';
 import { useGameStore } from '@/store/game';
 import { parseFen } from 'chessops/fen';
+import type { DropCallback } from '@/hooks/useDraggable';
 
 const Squares = () => {
   const playAs = useGameStore((state) => state.playAs);
@@ -33,11 +34,20 @@ const Squares = () => {
             {squareNames.map((squareName) => {
               const square = parseSquare(squareName);
               const piece = board.get(square);
+              const onDrop: DropCallback = (xUnits, yUnits, resetPosition) => {
+                const resultingSquare =
+                  square +
+                  (playAs === 'white' ? -1 : 1) * Math.floor(yUnits) * 8 +
+                  (playAs === 'white' ? 1 : -1) * Math.floor(xUnits);
+
+                resetPosition();
+              };
               return (
                 <SquareComponent
                   square={square}
                   key={squareName}
                   piece={piece}
+                  dropCallback={onDrop}
                 />
               );
             })}
