@@ -37,6 +37,10 @@ const useDraggable = (onDrop?: DropCallback) => {
     targetElementRef.current.onmousedown = (event) => {
       event.preventDefault();
 
+      if (event.button != 0) {
+        return;
+      }
+
       draggableElementRef.current!.style.setProperty(
         'top',
         event.clientY -
