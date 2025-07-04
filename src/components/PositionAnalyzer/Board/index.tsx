@@ -2,9 +2,13 @@ import { Flex, type FlexProps } from '@chakra-ui/react';
 import { FILE_NAMES, parseSquare, RANK_NAMES, type SquareName } from 'chessops';
 import SquareComponent from './SquareComponent';
 import { useGameStore } from '@/store/game';
+import { parseFen } from 'chessops/fen';
 
 const Squares = () => {
   const playAs = useGameStore((state) => state.playAs);
+  const fen = useGameStore((state) => state.fen);
+
+  const board = parseFen(fen).unwrap().board;
 
   return (
     <Flex
@@ -26,12 +30,17 @@ const Squares = () => {
             direction={playAs === 'white' ? 'row' : 'row-reverse'}
             key={squareNames[0]}
           >
-            {squareNames.map((squareName) => (
-              <SquareComponent
-                square={parseSquare(squareName)}
-                key={squareName}
-              />
-            ))}
+            {squareNames.map((squareName) => {
+              const square = parseSquare(squareName);
+              const piece = board.get(square);
+              return (
+                <SquareComponent
+                  square={square}
+                  key={squareName}
+                  piece={piece}
+                />
+              );
+            })}
           </Flex>
         );
       })}
