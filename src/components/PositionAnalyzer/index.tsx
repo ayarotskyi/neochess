@@ -69,7 +69,7 @@ const PositionAnalyzer = (props: StackProps) => {
           </Button>
         </HStack>
       </VStack>
-      <Flex flex={1} justify="center">
+      <Flex flex={1} justify="center" align="center" minH="0px" minW="500px">
         <Board />
       </Flex>
     </Stack>
