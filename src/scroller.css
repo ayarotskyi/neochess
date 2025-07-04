@@ -20,5 +20,5 @@
   transition: --var1 .3s;
 }
 .scroller:hover {
-  --var1: #aaa;
+  --var1: #1f2937;
 }
