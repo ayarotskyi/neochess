@@ -1,15 +1,10 @@
 import { Flex, type FlexProps } from '@chakra-ui/react';
-import { FILE_NAMES, parseSquare, RANK_NAMES, type SquareName } from 'chessops';
-import SquareComponent from './SquareComponent';
+import { RANK_NAMES } from 'chessops';
 import { useGameStore } from '@/store/game';
-import { parseFen } from 'chessops/fen';
-import type { DropCallback } from '@/hooks/useDraggable';
+import RankComponent from './RankComponent';
 
 const Squares = () => {
   const playAs = useGameStore((state) => state.playAs);
-  const fen = useGameStore((state) => state.fen);
-
-  const board = parseFen(fen).unwrap().board;
 
   return (
     <Flex
@@ -22,38 +17,9 @@ const Squares = () => {
       border="2px solid rgba(6, 182, 212, 0.5)"
       boxShadow="0px 0px 40px rgba(0, 255, 255, 0.2)"
     >
-      {RANK_NAMES.map((rank) =>
-        FILE_NAMES.map((file) => `${file}${rank}` as SquareName),
-      ).map((squareNames) => {
-        return (
-          <Flex
-            h="12.5%"
-            direction={playAs === 'white' ? 'row' : 'row-reverse'}
-            key={squareNames[0]}
-          >
-            {squareNames.map((squareName) => {
-              const square = parseSquare(squareName);
-              const piece = board.get(square);
-              const onDrop: DropCallback = (xUnits, yUnits, resetPosition) => {
-                const resultingSquare =
-                  square +
-                  (playAs === 'white' ? -1 : 1) * Math.floor(yUnits) * 8 +
-                  (playAs === 'white' ? 1 : -1) * Math.floor(xUnits);
-
-                resetPosition();
-              };
-              return (
-                <SquareComponent
-                  square={square}
-                  key={squareName}
-                  piece={piece}
-                  dropCallback={onDrop}
-                />
-              );
-            })}
-          </Flex>
-        );
-      })}
+      {new Array(RANK_NAMES.length).fill(null).map((_, rank) => (
+        <RankComponent rank={rank} key={rank} />
+      ))}
     </Flex>
   );
 };

@@ -11,16 +11,19 @@ import WhiteKnight from '@/icons/WhiteKnight';
 import WhitePawn from '@/icons/WhitePawn';
 import WhiteQueen from '@/icons/WhiteQueen';
 import WhiteRook from '@/icons/WhiteRook';
+import { useGameStore } from '@/store/game';
 import { Flex, Text, type StackProps } from '@chakra-ui/react';
 import {
+  Chess,
   makeSquare,
   type Color,
-  type Piece,
   type Role,
   type Square,
 } from 'chessops';
-import { type SVGProps } from 'react';
+import { parseFen } from 'chessops/fen';
+import { memo, useCallback, type SVGProps } from 'react';
 import type React from 'react';
+import { useShallow } from 'zustand/shallow';
 
 export type ColorRole = `${Color}_${Role}`;
 
@@ -41,18 +44,40 @@ const PieceComponents: Record<ColorRole, React.FC<SVGProps<SVGSVGElement>>> = {
 
 type Props = StackProps & {
   square: Square;
-  dropCallback: DropCallback;
-  piece?: Piece;
 };
 
-const SquareComponent = ({ square, piece, dropCallback, ...props }: Props) => {
-  const color: Color =
-    ((square % 8) + Math.floor(square / 8)) % 2 === 0 ? 'black' : 'white';
+const SquareComponent = ({ square, ...props }: Props) => {
+  const playAs = useGameStore((state) => state.playAs);
+  const play = useGameStore((state) => state.play);
+  const piece = useGameStore(
+    useShallow((state) => {
+      const board = Chess.fromSetup(parseFen(state.fen).unwrap()).unwrap()
+        .board;
+
+      return board.get(square);
+    }),
+  );
+
+  const onDrop = useCallback<DropCallback>(
+    (xUnits, yUnits, resetPosition) => {
+      const resultingSquare =
+        square +
+        (playAs === 'white' ? -1 : 1) * Math.floor(yUnits) * 8 +
+        (playAs === 'white' ? 1 : -1) * Math.floor(xUnits);
+
+      play({ from: square, to: resultingSquare }, resetPosition);
+    },
+    [play, playAs, square],
+  );
+
   const PieceComponent =
     piece && PieceComponents[`${piece.color}_${piece.role}`];
 
   const { draggableElementRefCallback, targetElementRefCallback } =
-    useDraggable(dropCallback);
+    useDraggable(onDrop);
+
+  const color: Color =
+    ((square % 8) + Math.floor(square / 8)) % 2 === 0 ? 'black' : 'white';
   return (
     <Flex
       width="12.5%"
@@ -105,4 +130,4 @@ const SquareComponent = ({ square, piece, dropCallback, ...props }: Props) => {
   );
 };
 
-export default SquareComponent;
+export default memo(SquareComponent);
