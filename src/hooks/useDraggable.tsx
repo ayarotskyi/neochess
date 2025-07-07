@@ -41,18 +41,20 @@ const useDraggable = (onDrop?: DropCallback) => {
         return;
       }
 
-      draggableElementRef.current!.style.setProperty(
+      const targetRect = targetElementRef.current.getBoundingClientRect();
+
+      draggableElementRef.current.style.setProperty(
         'top',
         event.clientY -
-          targetElementRef.current!.offsetTop -
-          draggableElementRef.current!.clientHeight / 2 +
+          targetRect.top -
+          draggableElementRef.current.clientHeight / 2 +
           'px',
       );
-      draggableElementRef.current!.style.setProperty(
+      draggableElementRef.current.style.setProperty(
         'left',
         event.clientX -
-          targetElementRef.current!.offsetLeft -
-          draggableElementRef.current!.clientWidth / 2 +
+          targetRect.left -
+          draggableElementRef.current.clientWidth / 2 +
           'px',
       );
       const prevZIndex = draggableElementRef.current!.style.zIndex;
@@ -60,17 +62,18 @@ const useDraggable = (onDrop?: DropCallback) => {
 
       document.onmousemove = (event) => {
         event.preventDefault();
+        const targetRect = targetElementRef.current!.getBoundingClientRect();
         draggableElementRef.current!.style.setProperty(
           'top',
           event.clientY -
-            targetElementRef.current!.offsetTop -
+            targetRect.top -
             draggableElementRef.current!.clientHeight / 2 +
             'px',
         );
         draggableElementRef.current!.style.setProperty(
           'left',
           event.clientX -
-            targetElementRef.current!.offsetLeft -
+            targetRect.left -
             draggableElementRef.current!.clientWidth / 2 +
             'px',
         );
@@ -78,11 +81,12 @@ const useDraggable = (onDrop?: DropCallback) => {
       document.onmouseup = (event) => {
         event.preventDefault();
 
+        const targetRect = targetElementRef.current!.getBoundingClientRect();
         draggableElementRef.current!.style.setProperty('z-index', prevZIndex);
         onDrop?.(
-          (event.clientX - targetElementRef.current!.offsetLeft) /
+          (event.clientX - targetRect.left) /
             draggableElementRef.current!.clientWidth,
-          (event.clientY - targetElementRef.current!.offsetTop) /
+          (event.clientY - targetRect.top) /
             draggableElementRef.current!.clientHeight,
           resetPosition,
         );

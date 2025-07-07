@@ -1,10 +1,16 @@
 import useDraggable, { type DropCallback } from '@/hooks/useDraggable';
-import { useGameStore } from '@/store/game';
+import { MoveResult, useGameStore } from '@/store/game';
 import { PieceComponents } from '@/utils';
 import { Flex, Text, type StackProps } from '@chakra-ui/react';
-import { Chess, makeSquare, type Color, type Square } from 'chessops';
+import {
+  Chess,
+  makeSquare,
+  type Color,
+  type Piece,
+  type Square,
+} from 'chessops';
 import { parseFen } from 'chessops/fen';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useRef } from 'react';
 import type React from 'react';
 import { useShallow } from 'zustand/shallow';
 
@@ -15,14 +21,28 @@ type Props = StackProps & {
 const SquareComponent = ({ square, ...props }: Props) => {
   const playAs = useGameStore((state) => state.playAs);
   const play = useGameStore((state) => state.play);
+  const unselectSquare = useGameStore((state) => state.unselectSquare);
   const piece = useGameStore(
     useShallow((state) => {
+      if (state.promotingMove?.from === square) {
+        return undefined;
+      }
+      if (state.promotingMove?.to === square) {
+        const piece: Piece = {
+          role: 'pawn',
+          color: state.promotingMove.to > 55 ? 'white' : 'black',
+        };
+        return piece;
+      }
+
       const board = Chess.fromSetup(parseFen(state.fen).unwrap()).unwrap()
         .board;
 
       return board.get(square);
     }),
   );
+
+  const shouldUnselectOnDrop = useRef(false);
 
   const onDrop = useCallback<DropCallback>(
     (xUnits, yUnits, resetPosition) => {
@@ -31,13 +51,29 @@ const SquareComponent = ({ square, ...props }: Props) => {
         (playAs === 'white' ? -1 : 1) * Math.floor(yUnits) * 8 +
         (playAs === 'white' ? 1 : -1) * Math.floor(xUnits);
 
-      const isSucessful = play({ from: square, to: resultingSquare });
-
-      if (!isSucessful) {
+      if (resultingSquare === square) {
+        if (shouldUnselectOnDrop.current) {
+          unselectSquare();
+          shouldUnselectOnDrop.current = false;
+        } else {
+          shouldUnselectOnDrop.current = true;
+        }
         resetPosition();
+        return;
       }
+
+      const moveResult = play({ from: square, to: resultingSquare });
+
+      if (moveResult === MoveResult.Success) {
+        unselectSquare();
+        shouldUnselectOnDrop.current = false;
+      } else {
+        shouldUnselectOnDrop.current = true;
+      }
+
+      resetPosition();
     },
-    [play, playAs, square],
+    [play, playAs, square, unselectSquare],
   );
 
   const PieceComponent =
@@ -54,10 +90,17 @@ const SquareComponent = ({ square, ...props }: Props) => {
   const onMouseDown = useCallback<React.MouseEventHandler<HTMLDivElement>>(
     (event) => {
       const state = useGameStore.getState();
+      if (square === state.selectedSquare) {
+        dragOnMouseDown(event);
+        return;
+      }
+
       if (state.selectedSquare !== null) {
-        const isSucessful = play({ from: state.selectedSquare, to: square });
-        if (!isSucessful) {
-          if (state.selectedSquare !== square && hasPiece) {
+        const moveResult = play({ from: state.selectedSquare, to: square });
+        if (moveResult === MoveResult.Success) {
+          unselectSquare();
+        } else if (moveResult === MoveResult.Illegal) {
+          if (hasPiece) {
             state.selectSquare(square);
           } else {
             state.unselectSquare();
@@ -69,7 +112,7 @@ const SquareComponent = ({ square, ...props }: Props) => {
         dragOnMouseDown(event);
       }
     },
-    [dragOnMouseDown, hasPiece, play, square],
+    [dragOnMouseDown, hasPiece, play, square, unselectSquare],
   );
 
   const color: Color =
@@ -86,13 +129,15 @@ const SquareComponent = ({ square, ...props }: Props) => {
             ? '#111827'
             : '#1F2937'
       }
-      _hover={{
-        bg: isSelected
-          ? 'rgba(168, 85, 247, 0.5)'
-          : color === 'black'
-            ? 'rgba(147, 51, 234, 0.2)'
-            : '#374151',
-      }}
+      _hover={
+        piece && {
+          bg: isSelected
+            ? 'rgba(168, 85, 247, 0.5)'
+            : color === 'black'
+              ? 'rgba(147, 51, 234, 0.2)'
+              : '#374151',
+        }
+      }
       cursor={hasPiece ? 'pointer' : 'default'}
       border="1px solid rgba(55, 65, 81, 0.3)"
       position="relative"

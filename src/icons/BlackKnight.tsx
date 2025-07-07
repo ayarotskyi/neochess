@@ -8,7 +8,7 @@ const BlackKnight = (props: React.SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <g
-      stroke="currentColor"
+      stroke="#000"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={1.5}

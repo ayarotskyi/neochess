@@ -2,6 +2,7 @@ import { Flex, type FlexProps } from '@chakra-ui/react';
 import { RANK_NAMES } from 'chessops';
 import { useGameStore } from '@/store/game';
 import RankComponent from './RankComponent';
+import PromotionPopover from './PromotionPopover';
 
 const Squares = () => {
   const playAs = useGameStore((state) => state.playAs);
@@ -16,10 +17,12 @@ const Squares = () => {
       bg="rgba(255, 255, 255, 0.002)"
       border="2px solid rgba(6, 182, 212, 0.5)"
       boxShadow="0px 0px 40px rgba(0, 255, 255, 0.2)"
+      position="relative"
     >
       {new Array(RANK_NAMES.length).fill(null).map((_, rank) => (
         <RankComponent rank={rank} key={rank} />
       ))}
+      <PromotionPopover />
     </Flex>
   );
 };
