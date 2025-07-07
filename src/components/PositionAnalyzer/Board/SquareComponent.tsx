@@ -91,8 +91,10 @@ const SquareComponent = ({ square, ...props }: Props) => {
       if (state.selectedSquare !== null) {
         const isSucessful = play({ from: state.selectedSquare, to: square });
         if (!isSucessful) {
-          if (hasPiece) {
+          if (state.selectedSquare !== square && hasPiece) {
             state.selectSquare(square);
+          } else {
+            state.unselectSquare();
           }
           dragOnMouseDown(event);
         }
