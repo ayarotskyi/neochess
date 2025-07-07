@@ -88,18 +88,17 @@ const SquareComponent = ({ square, ...props }: Props) => {
   const onMouseDown = useCallback<React.MouseEventHandler<HTMLDivElement>>(
     (event) => {
       const state = useGameStore.getState();
-
       if (state.selectedSquare !== null) {
         const isSucessful = play({ from: state.selectedSquare, to: square });
         if (!isSucessful) {
+          if (hasPiece) {
+            state.selectSquare(square);
+          }
           dragOnMouseDown(event);
         }
-      } else {
-        dragOnMouseDown(event);
-      }
-
-      if (hasPiece) {
+      } else if (hasPiece) {
         state.selectSquare(square);
+        dragOnMouseDown(event);
       }
     },
     [dragOnMouseDown, hasPiece, play, square],
