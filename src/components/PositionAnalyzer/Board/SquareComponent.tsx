@@ -10,7 +10,7 @@ import {
   type Square,
 } from 'chessops';
 import { parseFen } from 'chessops/fen';
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import type React from 'react';
 import { useShallow } from 'zustand/shallow';
 
@@ -41,8 +41,15 @@ const SquareComponent = ({ square, ...props }: Props) => {
       return board.get(square);
     }),
   );
+  const isSelected = useGameStore((state) => state.selectedSquare === square);
+  const hasPiece = piece !== undefined;
 
   const shouldUnselectOnDrop = useRef(false);
+  useEffect(() => {
+    if (!isSelected) {
+      shouldUnselectOnDrop.current = false;
+    }
+  }, [isSelected]);
 
   const onDrop = useCallback<DropCallback>(
     (xUnits, yUnits, resetPosition) => {
@@ -54,7 +61,6 @@ const SquareComponent = ({ square, ...props }: Props) => {
       if (resultingSquare === square) {
         if (shouldUnselectOnDrop.current) {
           unselectSquare();
-          shouldUnselectOnDrop.current = false;
         } else {
           shouldUnselectOnDrop.current = true;
         }
@@ -66,7 +72,6 @@ const SquareComponent = ({ square, ...props }: Props) => {
 
       if (moveResult === MoveResult.Success) {
         unselectSquare();
-        shouldUnselectOnDrop.current = false;
       } else {
         shouldUnselectOnDrop.current = true;
       }
@@ -85,8 +90,6 @@ const SquareComponent = ({ square, ...props }: Props) => {
     onMouseDown: dragOnMouseDown,
   } = useDraggable(onDrop);
 
-  const isSelected = useGameStore((state) => state.selectedSquare === square);
-  const hasPiece = piece !== undefined;
   const onMouseDown = useCallback<React.MouseEventHandler<HTMLDivElement>>(
     (event) => {
       const state = useGameStore.getState();

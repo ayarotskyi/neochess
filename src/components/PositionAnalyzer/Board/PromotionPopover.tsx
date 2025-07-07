@@ -1,7 +1,7 @@
 import { useGameStore } from '@/store/game';
 import { PieceComponents, type ColorRole } from '@/utils';
 import { Button, Flex, HStack, VStack, type FlexProps } from '@chakra-ui/react';
-import type { Color, Role } from 'chessops';
+import type { Role } from 'chessops';
 
 export type PromotionCallback = (role: Role | undefined) => void;
 
