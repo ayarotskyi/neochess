@@ -26,15 +26,15 @@ const useDraggable = (onDrop?: DropCallback) => {
     );
   }, []);
 
-  const applyCallbacks = useCallback(() => {
-    if (
-      targetElementRef.current === null ||
-      draggableElementRef.current === null
-    ) {
-      return;
-    }
+  const onMouseDown = useCallback<React.MouseEventHandler<HTMLDivElement>>(
+    (event) => {
+      if (
+        targetElementRef.current === null ||
+        draggableElementRef.current === null
+      ) {
+        return;
+      }
 
-    targetElementRef.current.onmousedown = (event) => {
       event.preventDefault();
 
       if (event.button != 0) {
@@ -90,34 +90,31 @@ const useDraggable = (onDrop?: DropCallback) => {
         document.onmousemove = null;
         document.onmouseup = null;
       };
-    };
-  }, [onDrop, resetPosition]);
+    },
+    [onDrop, resetPosition],
+  );
 
   const targetElementRefCallback = useCallback<RefCallback<HTMLElement | null>>(
     (ref) => {
       targetElementRef.current = ref;
-      applyCallbacks();
     },
-    [applyCallbacks],
+    [],
   );
 
   const draggableElementRefCallback = useCallback<
     RefCallback<HTMLElement | null>
-  >(
-    (ref) => {
-      draggableElementRef.current = ref;
-      initialPosition.current = {
-        top: ref?.style.top ?? '0px',
-        left: ref?.style.left ?? '0px',
-      };
-      applyCallbacks();
-    },
-    [applyCallbacks],
-  );
+  >((ref) => {
+    draggableElementRef.current = ref;
+    initialPosition.current = {
+      top: ref?.style.top ?? '0px',
+      left: ref?.style.left ?? '0px',
+    };
+  }, []);
 
   return {
     targetElementRefCallback,
     draggableElementRefCallback,
+    onMouseDown,
   };
 };
 

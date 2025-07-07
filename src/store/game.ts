@@ -1,34 +1,50 @@
-import { Chess, fen, type Color, type Move } from 'chessops';
+import { Chess, fen, type Color, type NormalMove, type Square } from 'chessops';
 import { create } from 'zustand';
 
 export type GameStoreType = {
   fen: string;
   playAs: Color;
-  play: (move: Move, resetPosition: () => void) => void;
+  selectedSquare: Square | null;
+  play: (move: NormalMove) => boolean;
+  selectSquare: (square: Square) => void;
+  unselectSquare: () => void;
 };
 
-export const useGameStore = create<GameStoreType>((set) => ({
+export const useGameStore = create<GameStoreType>((set, get) => ({
   fen: fen.INITIAL_FEN,
   playAs: 'white',
-  play: (move, resetPosition) => {
-    set((state) => {
-      const game = Chess.fromSetup(fen.parseFen(state.fen).unwrap()).unwrap();
+  selectedSquare: null,
+  play: (move) => {
+    if (move.from === move.to) {
+      return false;
+    }
 
-      if (!game.isLegal(move)) {
-        resetPosition();
-        return state;
-      }
+    const state = get();
 
-      try {
-        game.play(move);
-      } catch {
-        resetPosition();
-        return state;
-      }
+    state.unselectSquare();
 
-      return {
-        fen: fen.makeFen(game.toSetup()),
-      };
+    const game = Chess.fromSetup(fen.parseFen(state.fen).unwrap()).unwrap();
+
+    if (!game.isLegal(move)) {
+      return false;
+    }
+
+    try {
+      game.play(move);
+    } catch {
+      return false;
+    }
+
+    set({
+      fen: fen.makeFen(game.toSetup()),
     });
+
+    return true;
+  },
+  selectSquare: (square) => {
+    set({ selectedSquare: square });
+  },
+  unselectSquare: () => {
+    set({ selectedSquare: null });
   },
 }));

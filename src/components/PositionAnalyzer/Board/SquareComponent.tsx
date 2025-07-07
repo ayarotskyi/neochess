@@ -65,7 +65,11 @@ const SquareComponent = ({ square, ...props }: Props) => {
         (playAs === 'white' ? -1 : 1) * Math.floor(yUnits) * 8 +
         (playAs === 'white' ? 1 : -1) * Math.floor(xUnits);
 
-      play({ from: square, to: resultingSquare }, resetPosition);
+      const isSucessful = play({ from: square, to: resultingSquare });
+
+      if (!isSucessful) {
+        resetPosition();
+      }
     },
     [play, playAs, square],
   );
@@ -73,8 +77,33 @@ const SquareComponent = ({ square, ...props }: Props) => {
   const PieceComponent =
     piece && PieceComponents[`${piece.color}_${piece.role}`];
 
-  const { draggableElementRefCallback, targetElementRefCallback } =
-    useDraggable(onDrop);
+  const {
+    draggableElementRefCallback,
+    targetElementRefCallback,
+    onMouseDown: dragOnMouseDown,
+  } = useDraggable(onDrop);
+
+  const isSelected = useGameStore((state) => state.selectedSquare === square);
+  const hasPiece = piece !== undefined;
+  const onMouseDown = useCallback<React.MouseEventHandler<HTMLDivElement>>(
+    (event) => {
+      const state = useGameStore.getState();
+
+      if (state.selectedSquare !== null) {
+        const isSucessful = play({ from: state.selectedSquare, to: square });
+        if (!isSucessful) {
+          dragOnMouseDown(event);
+        }
+      } else {
+        dragOnMouseDown(event);
+      }
+
+      if (hasPiece) {
+        state.selectSquare(square);
+      }
+    },
+    [dragOnMouseDown, hasPiece, play, square],
+  );
 
   const color: Color =
     ((square % 8) + Math.floor(square / 8)) % 2 === 0 ? 'black' : 'white';
@@ -83,15 +112,26 @@ const SquareComponent = ({ square, ...props }: Props) => {
       width="12.5%"
       maxH="100%"
       aspectRatio={1}
-      bg={color === 'black' ? '#111827' : '#1F2937'}
+      bg={
+        isSelected
+          ? 'rgba(168, 85, 247, 0.5)'
+          : color === 'black'
+            ? '#111827'
+            : '#1F2937'
+      }
       _hover={{
-        bg: color === 'black' ? 'rgba(147, 51, 234, 0.2)' : '#374151',
+        bg: isSelected
+          ? 'rgba(168, 85, 247, 0.5)'
+          : color === 'black'
+            ? 'rgba(147, 51, 234, 0.2)'
+            : '#374151',
       }}
-      cursor="pointer"
+      cursor={hasPiece ? 'pointer' : 'default'}
       border="1px solid rgba(55, 65, 81, 0.3)"
       position="relative"
       align="center"
       justify="center"
+      onMouseDown={onMouseDown}
       ref={targetElementRefCallback}
       {...props}
     >
@@ -105,8 +145,8 @@ const SquareComponent = ({ square, ...props }: Props) => {
           ref={draggableElementRefCallback}
         >
           <PieceComponent
-            height="60%"
-            width="60%"
+            height="80%"
+            width="80%"
             filter="drop-shadow(0 0 10px rgba(255,255,255,0.8))"
             pointerEvents="none"
             style={{ zIndex: 2 }}
