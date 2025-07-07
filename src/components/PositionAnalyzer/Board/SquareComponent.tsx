@@ -1,46 +1,12 @@
 import useDraggable, { type DropCallback } from '@/hooks/useDraggable';
-import BlackBishop from '@/icons/BlackBishop';
-import BlackKing from '@/icons/BlackKing';
-import BlackKnight from '@/icons/BlackKnight';
-import BlackPawn from '@/icons/BlackPawn';
-import BlackQueen from '@/icons/BlackQueen';
-import BlackRook from '@/icons/BlackRook';
-import WhiteBishop from '@/icons/WhiteBishop';
-import WhiteKing from '@/icons/WhiteKing';
-import WhiteKnight from '@/icons/WhiteKnight';
-import WhitePawn from '@/icons/WhitePawn';
-import WhiteQueen from '@/icons/WhiteQueen';
-import WhiteRook from '@/icons/WhiteRook';
 import { useGameStore } from '@/store/game';
+import { PieceComponents } from '@/utils';
 import { Flex, Text, type StackProps } from '@chakra-ui/react';
-import {
-  Chess,
-  makeSquare,
-  type Color,
-  type Role,
-  type Square,
-} from 'chessops';
+import { Chess, makeSquare, type Color, type Square } from 'chessops';
 import { parseFen } from 'chessops/fen';
-import { memo, useCallback, type SVGProps } from 'react';
+import { memo, useCallback } from 'react';
 import type React from 'react';
 import { useShallow } from 'zustand/shallow';
-
-export type ColorRole = `${Color}_${Role}`;
-
-const PieceComponents: Record<ColorRole, React.FC<SVGProps<SVGSVGElement>>> = {
-  white_bishop: WhiteBishop,
-  white_king: WhiteKing,
-  white_knight: WhiteKnight,
-  white_pawn: WhitePawn,
-  white_queen: WhiteQueen,
-  white_rook: WhiteRook,
-  black_bishop: BlackBishop,
-  black_king: BlackKing,
-  black_knight: BlackKnight,
-  black_pawn: BlackPawn,
-  black_queen: BlackQueen,
-  black_rook: BlackRook,
-};
 
 type Props = StackProps & {
   square: Square;
