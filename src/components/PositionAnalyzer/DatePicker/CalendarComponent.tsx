@@ -94,6 +94,10 @@ const CalendarComponent = ({ onClose, ...props }: Props) => {
   }, []);
 
   const apply = useCallback(() => {
+    if (values.length < 2) {
+      return;
+    }
+
     setTimeRange({
       fromUnix: values[0].unix,
       toUnix: values[1].unix,
@@ -144,6 +148,7 @@ const CalendarComponent = ({ onClose, ...props }: Props) => {
           fontSize="14px"
           lineHeight="20px"
           onClick={apply}
+          disabled={values.length < 2}
           _hover={{
             boxShadow: '0px 0px 20px rgba(0,255,255,0.6)',
             bg: 'linear-gradient(90deg, oklch(71.5% .143 215.221) 0%, oklch(78.9% .154 211.53) 100%)',
