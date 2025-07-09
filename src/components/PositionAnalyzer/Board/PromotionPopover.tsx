@@ -1,5 +1,5 @@
 import { useGameStore } from '@/store/game';
-import { PieceComponents, type ColorRole } from '@/utils';
+import { PieceComponents, type ColorRole } from '@/common';
 import { Button, Flex, HStack, VStack, type FlexProps } from '@chakra-ui/react';
 import type { Role } from 'chessops';
 

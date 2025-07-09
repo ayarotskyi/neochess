@@ -1,6 +1,6 @@
 import useDraggable, { type DropCallback } from '@/hooks/useDraggable';
 import { MoveResult, useGameStore } from '@/store/game';
-import { PieceComponents } from '@/utils';
+import { PieceComponents } from '@/common';
 import { Flex, Text, type StackProps } from '@chakra-ui/react';
 import {
   Chess,

@@ -28,7 +28,7 @@ export type GameStoreType = {
 
 export const useGameStore = create<GameStoreType>((set, get) => ({
   fen: 'r2qkbnr/1Ppppppp/2n5/8/8/8/1PPPPPPP/RNBQKBNR w KQkq - 1 5',
-  playAs: 'black' as Color,
+  playAs: 'white' as Color,
   selectedSquare: null,
   promotingMove: null,
   play: (move) => {

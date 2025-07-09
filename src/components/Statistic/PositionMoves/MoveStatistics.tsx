@@ -1,4 +1,4 @@
-import { stringToColor } from '@/utils';
+import { stringToColor } from '@/common';
 import {
   Box,
   Circle,
