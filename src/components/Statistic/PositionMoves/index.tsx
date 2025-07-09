@@ -1,28 +1,10 @@
 import { Box, Flex, Text, VStack, type StackProps } from '@chakra-ui/react';
-import MoveStatistics, { type MoveStatisticsType } from './MoveStatistics';
+import MoveStatistics from './MoveStatistics';
+import { makeUci } from 'chessops';
+import { useAnalyzerStore } from '@/store/analyzer';
 
 const PositionMoves = (props: StackProps) => {
-  const moves: MoveStatisticsType[] = [
-    {
-      notation: 'e4',
-      playRate: 0.8,
-      winRate: 0.52,
-    },
-    { notation: 'Kf3', playRate: 0.1, winRate: 0.37 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-    { notation: 'Some move', playRate: 0.5, winRate: 0.5 },
-  ];
+  const moveStatistics = useAnalyzerStore((state) => state.moveStatistics);
   return (
     <Flex
       bg="rgba(17, 24, 39, 0.5)"
@@ -42,9 +24,17 @@ const PositionMoves = (props: StackProps) => {
         Move Statistics
       </Text>
       <VStack spaceY="16px" align="stretch" flex={1}>
-        {moves.map((move) => (
-          <MoveStatistics move={move} key={move.notation} />
-        ))}
+        {moveStatistics.map((statistic) => {
+          const uci = makeUci(statistic.move);
+          return (
+            <MoveStatistics
+              winRate={statistic.winRate}
+              playRate={statistic.playRate}
+              uci={uci}
+              key={uci}
+            />
+          );
+        })}
       </VStack>
       <Box flex={1}></Box>
     </Flex>

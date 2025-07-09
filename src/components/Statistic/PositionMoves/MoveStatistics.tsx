@@ -8,18 +8,14 @@ import {
   type StackProps,
 } from '@chakra-ui/react';
 
-export type MoveStatisticsType = {
-  notation: string;
+type Props = StackProps & {
+  uci: string;
   playRate: number;
   winRate: number;
 };
 
-type Props = StackProps & {
-  move: MoveStatisticsType;
-};
-
-const MoveStatistics = ({ move, ...props }: Props) => {
-  const color = stringToColor(move.notation + move.playRate + move.winRate);
+const MoveStatistics = ({ uci, playRate, winRate, ...props }: Props) => {
+  const color = stringToColor(uci + playRate + winRate);
   return (
     <VStack
       bg="rgba(31, 41, 55, 0.5)"
@@ -38,7 +34,7 @@ const MoveStatistics = ({ move, ...props }: Props) => {
           lineHeight="24px"
           color="#FFFFFF"
         >
-          {move.notation}
+          {uci}
         </Text>
         <Circle size="12px" bg={color} boxShadow={`0px 0px 10px ${color}`} />
       </HStack>
@@ -57,7 +53,7 @@ const MoveStatistics = ({ move, ...props }: Props) => {
             lineHeight="16px"
             color="#67E8F9"
           >
-            {Math.round(move.playRate * 100)}% played
+            {Math.round(playRate * 100)}% played
           </Text>
         </Box>
         <Box
@@ -74,7 +70,7 @@ const MoveStatistics = ({ move, ...props }: Props) => {
             lineHeight="16px"
             color="#86EFAC"
           >
-            {Math.round(move.winRate * 100)}% win
+            {Math.round(winRate * 100)}% win
           </Text>
         </Box>
       </HStack>
