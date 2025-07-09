@@ -8,6 +8,7 @@ import {
   type StackProps,
 } from '@chakra-ui/react';
 import Board from './Board';
+import DatePicker from './DatePicker';
 
 const PositionAnalyzer = (props: StackProps) => {
   return (
@@ -46,27 +47,7 @@ const PositionAnalyzer = (props: StackProps) => {
               Reset
             </Text>
           </Button>
-          <Button
-            py="9px"
-            px="24px"
-            bg="rgba(17, 24, 39, 0.5)"
-            border="1px solid rgba(6, 182, 212, 0.5)"
-            boxShadow="0px 0px 10px rgba(0, 255, 255, 0.2)"
-            _hover={{
-              bg: 'rgba(31, 41, 55, 0.5)',
-            }}
-            borderRadius="0px"
-          >
-            <Text
-              textStyle="mono"
-              fontWeight={400}
-              fontSize="12px"
-              lineHeight="16px"
-              color="#67E8F9"
-            >
-              Jan 1 - Jul 2
-            </Text>
-          </Button>
+          <DatePicker />
         </HStack>
       </VStack>
       <Flex flex={1} justify="center" align="center" minH="0px" minW="500px">
