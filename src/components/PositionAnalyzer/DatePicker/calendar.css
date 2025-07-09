@@ -1,5 +1,5 @@
 .rmdp-wrapper {
-    background-color: #0000 !important;
+    background-color: transparent !important;
 }
 
 .rmdp-shadow {
@@ -46,6 +46,7 @@
     left: 0px !important;
     right: 0px !important;
     top: 0px !important;
+    color: rgba(34, 211, 238, 0.6) !important
 }
 
 .rmdp-day-picker {
@@ -126,4 +127,27 @@
 
 .rmdp-day.rmdp-deactive > span, .rmdp-day.rmdp-disabled > span {
     opacity: 0.5;
+}
+
+.rmdp-day-picker:has(~ .rmdp-month-picker[style*="display: flex"]), .rmdp-day-picker:has(~ .rmdp-year-picker[style*="display: block"]) {
+    opacity: 0;
+}
+
+.rmdp-day.rmdp-selected span:not(.highlight) {
+    color: #67E8F9 !important;
+    background-color: rgb(6 182 212 / 0.3) !important;
+    box-shadow: none !important;
+}
+
+.rmdp-day.rmdp-today span {
+    background-color: unset !important;
+    border: none !important;
+}
+
+.rmdp-month-picker {
+    background-color: transparent !important;
+}
+
+.rmdp-year-picker {
+    background-color: transparent !important;
 }

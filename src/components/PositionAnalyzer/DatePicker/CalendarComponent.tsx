@@ -48,7 +48,7 @@ const renderButton = (
   );
 };
 
-const mapDays: CalendarProps['mapDays'] = (props) => {
+const mapDays: CalendarProps['mapDays'] = () => {
   return {
     style: {
       borderRadius: '8px',
@@ -59,13 +59,6 @@ const mapDays: CalendarProps['mapDays'] = (props) => {
       color: '#67E8F9',
       width: '100%',
       height: '100%',
-      className: 'cringe',
-      ...(props.isSameDate(props.today, props.date)
-        ? {
-            background: 'rgba(168, 85, 247, 0.3)',
-            border: '1px solid rgba(192, 132, 252, 0.5)',
-          }
-        : {}),
     },
   };
 };
