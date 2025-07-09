@@ -1,4 +1,6 @@
-import { stringToColor } from '@/common';
+import { statToColor } from '@/common';
+import { useAnalyzerStore } from '@/store/analyzer';
+import { MoveResult, useGameStore } from '@/store/game';
 import {
   Box,
   Circle,
@@ -7,22 +9,48 @@ import {
   VStack,
   type StackProps,
 } from '@chakra-ui/react';
+import { makeUci } from 'chessops';
+import { useCallback } from 'react';
+import { useShallow } from 'zustand/shallow';
 
 type Props = StackProps & {
-  uci: string;
-  playRate: number;
-  winRate: number;
+  statIndex: number;
 };
 
-const MoveStatistics = ({ uci, playRate, winRate, ...props }: Props) => {
-  const color = stringToColor(uci + playRate + winRate);
+const MoveStatistics = ({ statIndex, ...props }: Props) => {
+  const stat = useAnalyzerStore(
+    useShallow((state) => state.moveStatistics[statIndex]),
+  );
+  const hovered = stat.hovered;
+  const color = statToColor(stat);
+  const uci = makeUci(stat.move);
+
+  const setHoveredByIndex = useAnalyzerStore((state) => state.setHovered);
+  const setHovered = useCallback(
+    (hovered: boolean) => setHoveredByIndex(statIndex, hovered),
+    [setHoveredByIndex, statIndex],
+  );
+
+  const play = useGameStore((state) => state.play);
+  const unselectSquare = useGameStore((state) => state.unselectSquare);
+  const onClick = useCallback(() => {
+    const moveResult = play(stat.move);
+    if (moveResult === MoveResult.Success) {
+      unselectSquare();
+    }
+  }, [play, stat.move, unselectSquare]);
+
   return (
     <VStack
       bg="rgba(31, 41, 55, 0.5)"
-      border="1px solid rgba(55, 65, 81, 0.5)"
+      border={`1px solid ${hovered ? 'oklch(62.7% .265 303.9)' : 'rgba(55, 65, 81, 0.5)'}`}
+      cursor="pointer"
       padding="13px"
       spaceY="8px"
       align="stretch"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
       {...props}
     >
       <HStack>
@@ -53,7 +81,7 @@ const MoveStatistics = ({ uci, playRate, winRate, ...props }: Props) => {
             lineHeight="16px"
             color="#67E8F9"
           >
-            {Math.round(playRate * 100)}% played
+            {Math.round(stat.playRate * 100)}% played
           </Text>
         </Box>
         <Box
@@ -70,7 +98,7 @@ const MoveStatistics = ({ uci, playRate, winRate, ...props }: Props) => {
             lineHeight="16px"
             color="#86EFAC"
           >
-            {Math.round(winRate * 100)}% win
+            {Math.round(stat.winRate * 100)}% win
           </Text>
         </Box>
       </HStack>

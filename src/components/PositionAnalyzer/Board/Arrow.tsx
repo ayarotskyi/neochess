@@ -1,11 +1,19 @@
+import { statToColor } from '@/common';
+import { useAnalyzerStore } from '@/store/analyzer';
 import { useGameStore } from '@/store/game';
-import { squareFile, squareRank, type NormalMove } from 'chessops';
-import { useMemo, type SVGProps } from 'react';
+import { squareFile, squareRank } from 'chessops';
+import { memo, useMemo, type SVGProps } from 'react';
+import { useShallow } from 'zustand/shallow';
 
-type Props = SVGProps<SVGSVGElement> & { move: NormalMove };
+type Props = SVGProps<SVGSVGElement> & { statIndex: number };
 
-const Arrow = ({ move, scale, ...props }: Props) => {
+const Arrow = ({ statIndex, ...props }: Props) => {
   const playAs = useGameStore((state) => state.playAs);
+  const stat = useAnalyzerStore(
+    useShallow((state) => state.moveStatistics[statIndex]),
+  );
+  const move = stat.move;
+  const hovered = stat.hovered;
 
   const toRank = squareRank(move.to);
   const fromRank = squareRank(move.from);
@@ -29,13 +37,15 @@ const Arrow = ({ move, scale, ...props }: Props) => {
   );
   return (
     <svg
+      color={statToColor(stat)}
       style={{
         position: 'absolute',
         ...position,
-        transform: `rotate(${playAs === 'white' ? Math.PI / 2 - angle : (3 * Math.PI) / 2 - angle}rad) scaleX(${scale ?? 1})`,
+        transform: `rotate(${playAs === 'white' ? Math.PI / 2 - angle : (3 * Math.PI) / 2 - angle}rad) scaleX(${0.5 + 0.5 * stat.playRate})`,
         transformOrigin: 'bottom center',
         zIndex: 2,
         filter: 'drop-shadow(currentColor 0px 0px 10px)',
+        opacity: hovered ? 1 : 0.3 + 0.6 * stat.winRate,
       }}
       width="12.5%"
       height={`${12.5 * distance}%`}
@@ -57,4 +67,4 @@ const Arrow = ({ move, scale, ...props }: Props) => {
   );
 };
 
-export default Arrow;
+export default memo(Arrow);

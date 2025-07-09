@@ -10,8 +10,9 @@ import WhiteKnight from '@/icons/WhiteKnight';
 import WhitePawn from '@/icons/WhitePawn';
 import WhiteQueen from '@/icons/WhiteQueen';
 import WhiteRook from '@/icons/WhiteRook';
-import type { Color, Role } from 'chessops';
+import { makeUci, type Color, type Role } from 'chessops';
 import type { SVGProps } from 'react';
+import type { MoveStat } from './store/analyzer';
 
 export const stringToColor = (str: string) => {
   let hash = 0;
@@ -25,6 +26,9 @@ export const stringToColor = (str: string) => {
   }
   return color;
 };
+
+export const statToColor = (stat: MoveStat) =>
+  stringToColor(makeUci(stat.move) + stat.playRate + stat.winRate);
 
 export type ColorRole = `${Color}_${Role}`;
 

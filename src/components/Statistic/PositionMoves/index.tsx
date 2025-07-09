@@ -1,10 +1,11 @@
 import { Box, Flex, Text, VStack, type StackProps } from '@chakra-ui/react';
 import MoveStatistics from './MoveStatistics';
-import { makeUci } from 'chessops';
 import { useAnalyzerStore } from '@/store/analyzer';
 
 const PositionMoves = (props: StackProps) => {
-  const moveStatistics = useAnalyzerStore((state) => state.moveStatistics);
+  const moveStatisticsLength = useAnalyzerStore(
+    (state) => state.moveStatistics.length,
+  );
   return (
     <Flex
       bg="rgba(17, 24, 39, 0.5)"
@@ -24,16 +25,8 @@ const PositionMoves = (props: StackProps) => {
         Move Statistics
       </Text>
       <VStack spaceY="16px" align="stretch" flex={1}>
-        {moveStatistics.map((statistic) => {
-          const uci = makeUci(statistic.move);
-          return (
-            <MoveStatistics
-              winRate={statistic.winRate}
-              playRate={statistic.playRate}
-              uci={uci}
-              key={uci}
-            />
-          );
+        {new Array(moveStatisticsLength).fill(null).map((_, statIndex) => {
+          return <MoveStatistics statIndex={statIndex} key={statIndex} />;
         })}
       </VStack>
       <Box flex={1}></Box>

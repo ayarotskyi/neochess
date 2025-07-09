@@ -1,26 +1,18 @@
 import { Flex, type FlexProps } from '@chakra-ui/react';
-import { makeUci, RANK_NAMES } from 'chessops';
+import { RANK_NAMES } from 'chessops';
 import { useGameStore } from '@/store/game';
 import RankComponent from './RankComponent';
 import PromotionPopover from './PromotionPopover';
 import { useAnalyzerStore } from '@/store/analyzer';
 import Arrow from './Arrow';
-import { stringToColor } from '@/common';
 
 const Arrows = () => {
-  const statistics = useAnalyzerStore((state) => state.moveStatistics);
+  const statisticsLength = useAnalyzerStore(
+    (state) => state.moveStatistics.length,
+  );
 
-  return statistics.map((stat) => {
-    const uci = makeUci(stat.move);
-    return (
-      <Arrow
-        move={stat.move}
-        key={uci}
-        color={stringToColor(uci + stat.playRate + stat.winRate)}
-        opacity={0.3 + 0.6 * stat.winRate}
-        scale={0.5 + 0.5 * stat.playRate}
-      />
-    );
+  return new Array(statisticsLength).fill(null).map((_, statIndex) => {
+    return <Arrow statIndex={statIndex} key={statIndex} />;
   });
 };
 
