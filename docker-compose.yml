@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: appdb
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      HOST: ${HOST}
+      PORT: ${BACKEND_PORT}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    volumes:
+      - ./backend:/app
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-bin:/usr/local/cargo/bin
+      - cargo-target:/app/target
+    depends_on:
+      - postgres
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    command: >
+      sh -c "
+      if [ \"$MODE\" = \"release\" ]; then
+        cargo build --release;
+        ./target/release/neochess;
+      else
+        if ! command -v cargo-watch >/dev/null; then
+          cargo install cargo-watch;
+        fi &&
+        cargo watch -x run;
+      fi
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      PUBLIC_API_URL: "http://${HOST}:${BACKEND_PORT}"
+    volumes:
+      - ./frontend:/app
+      - node_modules:/app/node_modules
+      - yarn-global:/usr/local/share/.config/yarn/global
+      - node-global:/usr/local/lib/node_modules
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    command: >
+      sh -c "
+      yarn install;
+      if [ \"$MODE\" = \"release\" ]; then
+        yarn build && yarn global add serve && serve -s dist -l ${FRONTEND_PORT};
+      else
+        yarn dev;
+      fi
+      "
+
+volumes:
+  pgdata:
+  cargo-cache:
+  cargo-bin:
+  cargo-target:
+  node_modules:
+  yarn-global:
+  node-global:
+
+name: "neochess-${MODE}"
