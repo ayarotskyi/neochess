@@ -1,4 +1,6 @@
+pub mod domain;
 pub mod inbound;
+pub mod outbound;
 
 use crate::inbound::http::{HttpServer, HttpServerConfig};
 use std::{net::SocketAddr, str::FromStr};
