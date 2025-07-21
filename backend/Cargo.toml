@@ -8,6 +8,8 @@ actix-cors = "0.7.1"
 actix-http = "3.11.0"
 actix-web = "4.11.0"
 anyhow = "1.0.98"
+diesel = "2.2.12"
 juniper = "0.16.2"
 juniper_actix = "0.6.0"
+rschess = { version = "2.0.4", features = ["pgn"] }
 thiserror = "2.0.12"
