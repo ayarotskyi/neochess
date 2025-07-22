@@ -13,7 +13,26 @@ pub struct Game {
     pgn: Pgn,
 }
 
+impl Game {
+    pub fn new(
+        id: uuid::Uuid,
+        white: String,
+        black: String,
+        platform_name: PlatformName,
+        pgn: Pgn,
+    ) -> Self {
+        Self {
+            id: id,
+            white: white,
+            black: black,
+            platform_name: platform_name,
+            pgn: pgn,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A valid PGN string
 pub struct Pgn(String);
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
@@ -23,6 +42,11 @@ pub struct InvalidPgnError;
 impl Pgn {
     pub fn new(pgn_str: &str) -> Result<Self, InvalidPgnError> {
         unimplemented!();
+    }
+
+    /// Used only when png was taken from trusted sources, like db or game platform
+    pub fn new_unchecked(pgn_str: &str) -> Self {
+        Self(pgn_str.into())
     }
 }
 

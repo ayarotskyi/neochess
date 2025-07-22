@@ -1,4 +1,6 @@
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+use strum_macros::{EnumString, IntoStaticStr};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString, IntoStaticStr)]
 pub enum PlatformName {
     ChessCom,
 }
