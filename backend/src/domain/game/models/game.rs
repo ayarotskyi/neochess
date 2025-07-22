@@ -39,9 +39,17 @@ pub struct Pgn(String);
 #[error("parse pgn error")]
 pub struct InvalidPgnError;
 
+pub trait PgnValidator {
+    fn is_valid_pgn(&self, pgn: &str) -> bool;
+}
+
 impl Pgn {
-    pub fn new(pgn_str: &str) -> Result<Self, InvalidPgnError> {
-        unimplemented!();
+    pub fn new(pgn_str: &str, validator: &impl PgnValidator) -> Result<Self, InvalidPgnError> {
+        if validator.is_valid_pgn(pgn_str) {
+            Ok(Self(pgn_str.into()))
+        } else {
+            Err(InvalidPgnError)
+        }
     }
 
     /// Used only when png was taken from trusted sources, like db or game platform
@@ -52,7 +60,58 @@ impl Pgn {
 
 #[cfg(test)]
 mod tests {
+    use std::{io, ops::ControlFlow};
+
     use super::*;
+
+    struct MoveCounter;
+
+    impl pgn_reader::Visitor for MoveCounter {
+        type Tags = ();
+        type Movetext = usize;
+        type Output = usize;
+
+        fn begin_tags(&mut self) -> ControlFlow<Self::Output, Self::Tags> {
+            ControlFlow::Continue(())
+        }
+
+        fn begin_movetext(
+            &mut self,
+            _tags: Self::Tags,
+        ) -> ControlFlow<Self::Output, Self::Movetext> {
+            ControlFlow::Continue(0)
+        }
+
+        fn san(
+            &mut self,
+            movetext: &mut Self::Movetext,
+            _san_plus: pgn_reader::SanPlus,
+        ) -> ControlFlow<Self::Output> {
+            *movetext += 1;
+            ControlFlow::Continue(())
+        }
+
+        fn begin_variation(
+            &mut self,
+            _movetext: &mut Self::Movetext,
+        ) -> ControlFlow<Self::Output, pgn_reader::Skip> {
+            ControlFlow::Continue(pgn_reader::Skip(true)) // stay in the mainline
+        }
+
+        fn end_game(&mut self, movetext: Self::Movetext) -> Self::Output {
+            movetext
+        }
+    }
+
+    struct PgnReaderPgnValidator;
+
+    impl PgnValidator for PgnReaderPgnValidator {
+        fn is_valid_pgn(&self, pgn: &str) -> bool {
+            let mut reader = pgn_reader::Reader::new(io::Cursor::new(pgn));
+            let result = reader.read_game(&mut MoveCounter);
+            result.is_ok_and(|value| value.is_some_and(|value| value > 0))
+        }
+    }
 
     #[test]
     fn test_create_pgn_success() {
@@ -60,7 +119,7 @@ mod tests {
 
         let expected = Ok(Pgn(pgn_str.into()));
 
-        let actual = Pgn::new(pgn_str);
+        let actual = Pgn::new(pgn_str, &PgnReaderPgnValidator);
 
         assert_eq!(expected, actual);
     }
@@ -71,7 +130,7 @@ mod tests {
 
         let expected = Err(InvalidPgnError);
 
-        let actual = Pgn::new(pgn_str);
+        let actual = Pgn::new(pgn_str, &PgnReaderPgnValidator);
 
         assert_eq!(expected, actual);
     }
