@@ -16,7 +16,7 @@ use tokio::task;
 use crate::{
     domain::game::{
         models::game::{CreateGamesError, InvalidPgnError, NewGame},
-        ports::GameService,
+        ports::GameRepository,
     },
     outbound::{
         position_visitor::PositionVisitor,
@@ -147,7 +147,7 @@ impl From<CreateGamesPostgresError> for CreateGamesError {
     }
 }
 
-impl GameService for Postgres {
+impl GameRepository for Postgres {
     async fn store_games(&self, games: Vec<NewGame>) -> Result<(), CreateGamesError> {
         Ok(self.save_games(games).await?)
     }

@@ -1,6 +1,6 @@
 use crate::domain::game::models::game::{CreateGamesError, NewGame};
 
-pub trait GameService {
+pub trait GameRepository {
     fn store_games(
         &self,
         games: Vec<NewGame>,
