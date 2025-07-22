@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use crate::{
     domain::{
         game::models::{
-            game::{Game, Pgn},
+            game::{Game, NewGame, Pgn},
             position::{Fen, Position},
         },
         platform::models::PlatformName,
@@ -33,6 +33,26 @@ impl From<GameDto> for Game {
             PlatformName::from_str(&value.platform_name).unwrap(),
             Pgn::new_unchecked(&value.pgn),
         )
+    }
+}
+#[derive(Insertable)]
+#[diesel(table_name = game)]
+pub struct NewGameDto {
+    pub white: String,
+    pub black: String,
+    pub platform_name: String,
+    pub pgn: String,
+}
+
+impl From<NewGame> for NewGameDto {
+    fn from(value: NewGame) -> Self {
+        Self {
+            white: value.white().clone(),
+            black: value.black().clone(),
+            platform_name: <&PlatformName as Into<&'static str>>::into(value.platform_name())
+                .to_string(),
+            pgn: value.pgn().to_string(),
+        }
     }
 }
 

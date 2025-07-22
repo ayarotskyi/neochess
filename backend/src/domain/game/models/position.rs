@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -35,6 +37,12 @@ impl Fen {
 
     pub fn new_unchecked(fen_str: &str) -> Self {
         Self(fen_str.into())
+    }
+}
+
+impl Display for Fen {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 

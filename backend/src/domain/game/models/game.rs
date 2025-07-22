@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use thiserror::Error;
 
 use crate::domain::platform::models::PlatformName;
@@ -29,6 +31,80 @@ impl Game {
             pgn: pgn,
         }
     }
+
+    pub fn id(&self) -> &uuid::Uuid {
+        &self.id
+    }
+
+    pub fn white(&self) -> &String {
+        &self.white
+    }
+
+    pub fn black(&self) -> &String {
+        &self.black
+    }
+
+    pub fn platform_name(&self) -> &PlatformName {
+        &self.platform_name
+    }
+
+    pub fn pgn(&self) -> &Pgn {
+        &self.pgn
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TurnPosition {
+    turn_nr: i32,
+    fen: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NewGame {
+    white: String,
+    black: String,
+    platform_name: PlatformName,
+    pgn: Pgn,
+    positions: Vec<TurnPosition>,
+}
+
+impl NewGame {
+    pub fn new(
+        white: String,
+        black: String,
+        platform_name: PlatformName,
+        pgn: Pgn,
+        pgn_iterator: impl Iterator<Item = Result<TurnPosition, InvalidPgnError>>,
+    ) -> Result<Self, InvalidPgnError> {
+        let mut positions = Vec::new();
+        for position in pgn_iterator {
+            positions.push(position?);
+        }
+
+        Ok(Self {
+            white: white,
+            black: black,
+            platform_name: platform_name,
+            pgn: pgn,
+            positions: positions,
+        })
+    }
+
+    pub fn white(&self) -> &String {
+        &self.white
+    }
+
+    pub fn black(&self) -> &String {
+        &self.black
+    }
+
+    pub fn platform_name(&self) -> &PlatformName {
+        &self.platform_name
+    }
+
+    pub fn pgn(&self) -> &Pgn {
+        &self.pgn
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -56,6 +132,22 @@ impl Pgn {
     pub fn new_unchecked(pgn_str: &str) -> Self {
         Self(pgn_str.into())
     }
+}
+
+impl Display for Pgn {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum CreateGamesError {
+    #[error("database error: {0}")]
+    DatabaseError(String),
+    #[error("connection failed: {0}")]
+    ConnectionError(String),
+    #[error(transparent)]
+    Unknown(#[from] anyhow::Error),
 }
 
 #[cfg(test)]
