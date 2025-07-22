@@ -1,22 +1,27 @@
 pub mod dto;
 pub mod schema;
 
-use std::env;
+use std::{env, io};
 
+use anyhow::anyhow;
 use diesel::{
     dsl::insert_into,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
-    result::{DatabaseErrorKind, Error},
 };
+use pgn_reader::Reader;
+use thiserror::Error;
 use tokio::task;
 
 use crate::{
     domain::game::{
-        models::game::{CreateGamesError, NewGame},
+        models::game::{CreateGamesError, InvalidPgnError, NewGame},
         ports::GameService,
     },
-    outbound::postgres::dto::NewGameDto,
+    outbound::{
+        position_visitor::PositionVisitor,
+        postgres::dto::{GamePositionDto, NewGameDto, NewPositionDto},
+    },
 };
 
 pub struct Postgres {
@@ -36,48 +41,114 @@ impl Postgres {
         }
     }
 
-    pub async fn save_games(&self, new_games: Vec<NewGame>) -> Result<usize, Error> {
+    pub async fn save_games(
+        &self,
+        new_games: Vec<NewGame>,
+    ) -> Result<(), CreateGamesPostgresError> {
         let pool = self.pool.clone();
 
-        task::spawn_blocking(move || {
-            use schema::game::dsl::*;
+        let result = task::spawn_blocking(move || {
+            use schema::game;
+            use schema::game_position;
+            use schema::position;
 
-            let mut conn = pool.get().map_err(|_| Error::BrokenTransactionManager)?;
+            let mut conn = pool.get()?;
 
-            let result = insert_into(game)
-                .values(
-                    new_games
-                        .into_iter()
-                        .map(NewGameDto::from)
-                        .collect::<Vec<NewGameDto>>(),
-                )
-                .on_conflict_do_nothing()
-                .execute(&mut conn)?;
+            conn.transaction(|conn| {
+                for new_game in new_games {
+                    let mut reader = Reader::new(io::Cursor::new(new_game.pgn()));
 
-            Ok(result)
+                    let fen_vec = reader
+                        .read_game(&mut PositionVisitor::new(new_game.pgn().into()))
+                        .map_err(|_| InvalidPgnError(new_game.pgn().into()))?
+                        .unwrap_or(Err(InvalidPgnError(new_game.pgn().into())))?;
+
+                    let position_ids: Vec<uuid::Uuid> = insert_into(position::table)
+                        .values(
+                            &fen_vec
+                                .into_iter()
+                                .map(|f| NewPositionDto { fen: f.to_string() })
+                                .collect::<Vec<NewPositionDto>>(),
+                        )
+                        .on_conflict_do_nothing()
+                        .returning(position::id)
+                        .get_results(conn)?;
+
+                    if position_ids.len() == 0 {
+                        return Err(CreateGamesPostgresError::Unknown(anyhow!(
+                            "no position is stored"
+                        )));
+                    }
+
+                    let game_ids: Vec<uuid::Uuid> = insert_into(game::table)
+                        .values(&NewGameDto::from(new_game))
+                        .returning(game::id)
+                        .get_results(conn)?;
+
+                    if game_ids.len() == 0 {
+                        return Err(CreateGamesPostgresError::Unknown(anyhow!(
+                            "no game is stored"
+                        )));
+                    }
+
+                    let game_id = game_ids[0];
+
+                    insert_into(game_position::table)
+                        .values(
+                            &position_ids
+                                .into_iter()
+                                .enumerate()
+                                .map(|(index, position_id)| GamePositionDto {
+                                    game_id: game_id,
+                                    position_id: position_id,
+                                    move_idx: index as i16,
+                                })
+                                .collect::<Vec<GamePositionDto>>(),
+                        )
+                        .execute(conn)?;
+                }
+
+                Ok::<(), CreateGamesPostgresError>(())
+            })?;
+
+            Ok::<(), CreateGamesPostgresError>(())
         })
-        .await
-        .map_err(|_| Error::NotInTransaction)? // It will be mapped to CreateGamesError
+        .await?;
+
+        result
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum CreateGamesPostgresError {
+    #[error(transparent)]
+    DieselError(#[from] diesel::result::Error),
+    #[error(transparent)]
+    ConnectionError(#[from] r2d2::Error),
+    #[error(transparent)]
+    JoinError(#[from] tokio::task::JoinError),
+    #[error(transparent)]
+    InvalidPgn(#[from] InvalidPgnError),
+    #[error(transparent)]
+    Unknown(#[from] anyhow::Error),
+}
+
+impl From<CreateGamesPostgresError> for CreateGamesError {
+    fn from(value: CreateGamesPostgresError) -> Self {
+        match value {
+            CreateGamesPostgresError::ConnectionError(err) => {
+                CreateGamesError::ConnectionError(err.to_string())
+            }
+            CreateGamesPostgresError::DieselError(err) => {
+                CreateGamesError::DatabaseError(err.to_string())
+            }
+            err => CreateGamesError::Unknown(anyhow::anyhow!(err)),
+        }
     }
 }
 
 impl GameService for Postgres {
-    async fn store_games(&self, games: Vec<NewGame>) -> Result<usize, CreateGamesError> {
-        self.save_games(games).await.map_err(|err| match err {
-            Error::BrokenTransactionManager => {
-                CreateGamesError::ConnectionError("database connection failed".to_string())
-            }
-            Error::DatabaseError(err_type, _) => CreateGamesError::DatabaseError(
-                match err_type {
-                    DatabaseErrorKind::CheckViolation => "check violation",
-                    DatabaseErrorKind::ForeignKeyViolation => "foreign key violation",
-                    DatabaseErrorKind::NotNullViolation => "not null violation",
-                    DatabaseErrorKind::UniqueViolation => "unique violation",
-                    _ => "unknown",
-                }
-                .to_string(),
-            ),
-            err => CreateGamesError::Unknown(anyhow::anyhow!(err)),
-        })
+    async fn store_games(&self, games: Vec<NewGame>) -> Result<(), CreateGamesError> {
+        Ok(self.save_games(games).await?)
     }
 }

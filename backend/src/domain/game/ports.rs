@@ -4,5 +4,5 @@ pub trait GameService {
     fn store_games(
         &self,
         games: Vec<NewGame>,
-    ) -> impl Future<Output = Result<usize, CreateGamesError>>;
+    ) -> impl Future<Output = Result<(), CreateGamesError>>;
 }

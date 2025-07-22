@@ -70,13 +70,19 @@ impl From<PositionDto> for Position {
     }
 }
 
-#[derive(Identifiable, Selectable, Queryable, Associations, Debug)]
-#[diesel(primary_key(game_id, position_id, move_nr))]
+#[derive(Insertable)]
+#[diesel(table_name = position)]
+pub struct NewPositionDto {
+    pub fen: String,
+}
+
+#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Insertable)]
+#[diesel(primary_key(game_id, position_id, move_idx))]
 #[diesel(belongs_to(GameDto, foreign_key = game_id))]
 #[diesel(belongs_to(PositionDto, foreign_key = position_id))]
 #[diesel(table_name = game_position)]
 pub struct GamePositionDto {
     pub game_id: uuid::Uuid,
     pub position_id: uuid::Uuid,
-    pub move_nr: i32,
+    pub move_idx: i16,
 }

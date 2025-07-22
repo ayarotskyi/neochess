@@ -54,18 +54,11 @@ impl Game {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TurnPosition {
-    turn_nr: i32,
-    fen: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewGame {
     white: String,
     black: String,
     platform_name: PlatformName,
-    pgn: Pgn,
-    positions: Vec<TurnPosition>,
+    pgn: String,
 }
 
 impl NewGame {
@@ -73,20 +66,13 @@ impl NewGame {
         white: String,
         black: String,
         platform_name: PlatformName,
-        pgn: Pgn,
-        pgn_iterator: impl Iterator<Item = Result<TurnPosition, InvalidPgnError>>,
+        pgn: String,
     ) -> Result<Self, InvalidPgnError> {
-        let mut positions = Vec::new();
-        for position in pgn_iterator {
-            positions.push(position?);
-        }
-
         Ok(Self {
             white: white,
             black: black,
             platform_name: platform_name,
             pgn: pgn,
-            positions: positions,
         })
     }
 
@@ -102,7 +88,7 @@ impl NewGame {
         &self.platform_name
     }
 
-    pub fn pgn(&self) -> &Pgn {
+    pub fn pgn(&self) -> &String {
         &self.pgn
     }
 }
@@ -112,8 +98,8 @@ impl NewGame {
 pub struct Pgn(String);
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
-#[error("parse pgn error")]
-pub struct InvalidPgnError;
+#[error("invalid pgn: {0}")]
+pub struct InvalidPgnError(pub String);
 
 pub trait PgnValidator {
     fn is_valid_pgn(&self, pgn: &str) -> bool;
@@ -124,7 +110,7 @@ impl Pgn {
         if validator.is_valid_pgn(pgn_str) {
             Ok(Self(pgn_str.into()))
         } else {
-            Err(InvalidPgnError)
+            Err(InvalidPgnError(pgn_str.into()))
         }
     }
 
@@ -220,7 +206,7 @@ mod tests {
     fn test_create_pgn_failure() {
         let pgn_str = "...";
 
-        let expected = Err(InvalidPgnError);
+        let expected = Err(InvalidPgnError(pgn_str.into()));
 
         let actual = Pgn::new(pgn_str, &PgnReaderPgnValidator);
 

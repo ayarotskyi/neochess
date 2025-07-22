@@ -11,11 +11,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    game_position (game_id, position_id, move_nr) {
+    game_position (game_id, position_id, move_idx) {
         game_id -> Uuid,
         position_id -> Uuid,
-        #[max_length = 20]
-        move_nr -> Varchar,
+        move_idx -> Int2,
     }
 }
 

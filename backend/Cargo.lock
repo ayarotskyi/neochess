@@ -1107,6 +1107,7 @@ dependencies = [
  "juniper",
  "juniper_actix",
  "pgn-reader",
+ "r2d2",
  "shakmaty",
  "strum",
  "strum_macros",
