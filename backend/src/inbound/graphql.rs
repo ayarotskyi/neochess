@@ -1,29 +1,27 @@
-use juniper::{Context, EmptyMutation, EmptySubscription, RootNode, graphql_object};
+mod dto;
+mod mutation;
+mod query;
 
-pub struct GraphQLContext();
+use crate::domain::game::ports::GameService;
+use juniper::{Context, EmptySubscription, RootNode};
+use mutation::Mutation;
+use query::Query;
+use std::sync::Arc;
+
+pub struct GraphQLContext {
+    game_service: Arc<dyn GameService>,
+}
 
 impl GraphQLContext {
-    pub fn new() -> Self {
-        Self()
+    pub fn new(game_service: Arc<dyn GameService>) -> Self {
+        Self { game_service }
     }
 }
 
 impl Context for GraphQLContext {}
 
-#[derive(Clone, Copy, Debug)]
-pub struct Query;
-
-/// The root query object of the schema
-#[graphql_object(context = GraphQLContext)]
-impl Query {
-    fn hello_world(#[graphql(context)] _ctx: &GraphQLContext) -> Option<String> {
-        Some(format!("Hello, {}!", "world"))
-    }
-}
-
-pub type Schema =
-    RootNode<'static, Query, EmptyMutation<GraphQLContext>, EmptySubscription<GraphQLContext>>;
+pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<GraphQLContext>>;
 
 pub fn schema() -> Schema {
-    Schema::new(Query, EmptyMutation::new(), EmptySubscription::new())
+    Schema::new(Query, Mutation, EmptySubscription::new())
 }

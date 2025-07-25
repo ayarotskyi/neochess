@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use diesel::prelude::*;
 
 use crate::{
@@ -20,7 +18,7 @@ pub struct GameDto {
     pub id: uuid::Uuid,
     pub white: String,
     pub black: String,
-    pub platform_name: String,
+    pub platform_name: PlatformName,
     pub pgn: String,
 }
 
@@ -30,7 +28,7 @@ impl From<GameDto> for Game {
             value.id,
             value.white,
             value.black,
-            PlatformName::from_str(&value.platform_name).unwrap(),
+            value.platform_name,
             Pgn::new_unchecked(&value.pgn),
         )
     }

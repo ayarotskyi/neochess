@@ -1,9 +1,10 @@
 pub mod dto;
 pub mod schema;
 
-use std::{env, io};
+use std::io;
 
 use anyhow::anyhow;
+use async_trait::async_trait;
 use diesel::{
     dsl::insert_into,
     prelude::*,
@@ -12,6 +13,7 @@ use diesel::{
 use pgn_reader::Reader;
 use thiserror::Error;
 use tokio::task;
+use uuid::Uuid;
 
 use crate::{
     domain::game::{
@@ -24,14 +26,14 @@ use crate::{
     },
 };
 
+#[derive(Clone)]
 pub struct Postgres {
     pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl Postgres {
-    pub fn new() -> Self {
-        let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let manager = ConnectionManager::<PgConnection>::new(url);
+    pub fn new(database_url: String) -> Self {
+        let manager = ConnectionManager::<PgConnection>::new(database_url);
 
         Self {
             pool: Pool::builder()
@@ -44,7 +46,7 @@ impl Postgres {
     pub async fn save_games(
         &self,
         new_games: Vec<NewGame>,
-    ) -> Result<(), CreateGamesPostgresError> {
+    ) -> Result<Vec<Uuid>, CreateGamesPostgresError> {
         let pool = self.pool.clone();
 
         let result = task::spawn_blocking(move || {
@@ -54,7 +56,8 @@ impl Postgres {
 
             let mut conn = pool.get()?;
 
-            conn.transaction(|conn| {
+            let game_ids = conn.transaction(|conn| {
+                let mut resulting_ids: Vec<Uuid> = Vec::with_capacity(new_games.len());
                 for new_game in new_games {
                     let mut reader = Reader::new(io::Cursor::new(new_game.pgn()));
 
@@ -106,12 +109,14 @@ impl Postgres {
                                 .collect::<Vec<GamePositionDto>>(),
                         )
                         .execute(conn)?;
+
+                    resulting_ids.push(game_id);
                 }
 
-                Ok::<(), CreateGamesPostgresError>(())
+                Ok::<Vec<Uuid>, CreateGamesPostgresError>(resulting_ids)
             })?;
 
-            Ok::<(), CreateGamesPostgresError>(())
+            Ok::<Vec<Uuid>, CreateGamesPostgresError>(game_ids)
         })
         .await?;
 
@@ -147,8 +152,9 @@ impl From<CreateGamesPostgresError> for CreateGamesError {
     }
 }
 
+#[async_trait]
 impl GameRepository for Postgres {
-    async fn store_games(&self, games: Vec<NewGame>) -> Result<(), CreateGamesError> {
+    async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, CreateGamesError> {
         Ok(self.save_games(games).await?)
     }
 }

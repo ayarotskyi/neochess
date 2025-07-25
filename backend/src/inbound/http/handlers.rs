@@ -1,4 +1,7 @@
-use crate::inbound::{graphql::GraphQLContext, http::AppData};
+use crate::{
+    domain::game::ports::GameService,
+    inbound::{graphql::GraphQLContext, http::AppData},
+};
 use actix_http::StatusCode;
 use actix_web::{
     Error, HttpRequest, HttpResponse, ResponseError,
@@ -36,18 +39,27 @@ impl ResponseError for HttpError {
     }
 }
 
-pub async fn playground() -> Result<HttpResponse, Error> {
+pub async fn playground(graphql_endpoint_url: &str) -> Result<HttpResponse, Error> {
     if cfg!(debug_assertions) {
-        playground_handler("/graphql", None).await
+        playground_handler(graphql_endpoint_url, None).await
     } else {
         Err(HttpError::BadRequest.into())
     }
 }
 
-pub async fn graphql(
+pub async fn graphql<GS>(
     req: HttpRequest,
     payload: web::Payload,
-    app_data: Data<AppData>,
-) -> Result<HttpResponse, Error> {
-    graphql_handler(&app_data.schema, &GraphQLContext::new(), req, payload).await
+    app_data: Data<AppData<GS>>,
+) -> Result<HttpResponse, Error>
+where
+    GS: GameService,
+{
+    graphql_handler(
+        &app_data.schema,
+        &GraphQLContext::new(app_data.game_service.clone()),
+        req,
+        payload,
+    )
+    .await
 }

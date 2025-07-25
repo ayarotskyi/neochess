@@ -1,6 +1,9 @@
 mod handlers;
 
-use crate::inbound::graphql::{Schema, schema};
+use crate::{
+    domain::game::ports::GameService,
+    inbound::graphql::{Schema, schema},
+};
 use actix_cors::Cors;
 use actix_web::{
     App,
@@ -10,15 +13,16 @@ use actix_web::{
     web::{self, Data},
 };
 use anyhow::Context;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HttpServerConfig {
     pub addr: SocketAddr,
 }
 
-struct AppData {
+struct AppData<GS: GameService> {
     pub schema: Schema,
+    pub game_service: Arc<GS>,
 }
 
 pub struct HttpServer {
@@ -26,11 +30,18 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub fn new(config: HttpServerConfig) -> anyhow::Result<Self> {
+    pub fn new<GS: GameService>(
+        config: HttpServerConfig,
+        game_service: GS,
+    ) -> anyhow::Result<Self> {
+        let game_service_arc = Arc::new(game_service);
         Ok(Self {
             server: actix_web::HttpServer::new(move || {
                 App::new()
-                    .app_data(Data::new(AppData { schema: schema() }))
+                    .app_data(Data::new(AppData {
+                        schema: schema(),
+                        game_service: game_service_arc.clone(),
+                    }))
                     .wrap(
                         Cors::default()
                             .allow_any_origin()
@@ -44,11 +55,12 @@ impl HttpServer {
                     .wrap(middleware::Logger::default())
                     .service(
                         web::resource("/graphql")
-                            .route(web::post().to(handlers::graphql))
-                            .route(web::get().to(handlers::graphql)),
+                            .route(web::post().to(handlers::graphql::<GS>))
+                            .route(web::get().to(handlers::graphql::<GS>)),
                     )
                     .service(
-                        web::resource("/playground").route(web::get().to(handlers::playground)),
+                        web::resource("/playground")
+                            .route(web::get().to(|| handlers::playground("/graphql"))),
                     )
             })
             .bind(config.addr)

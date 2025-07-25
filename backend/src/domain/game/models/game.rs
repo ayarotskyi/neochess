@@ -62,18 +62,13 @@ pub struct NewGame {
 }
 
 impl NewGame {
-    pub fn new(
-        white: String,
-        black: String,
-        platform_name: PlatformName,
-        pgn: String,
-    ) -> Result<Self, InvalidPgnError> {
-        Ok(Self {
+    pub fn new(white: String, black: String, platform_name: PlatformName, pgn: String) -> Self {
+        Self {
             white: white,
             black: black,
             platform_name: platform_name,
             pgn: pgn,
-        })
+        }
     }
 
     pub fn white(&self) -> &String {
