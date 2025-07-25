@@ -25,6 +25,9 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(game_position -> game (game_id));
+diesel::joinable!(game_position -> position (position_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     game,
     game_position,
