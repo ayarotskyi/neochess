@@ -13,14 +13,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 enum HttpError {
-    #[error("internal error")]
-    InternalError,
-
     #[error("bad request")]
     BadRequest,
-
-    #[error("timeout")]
-    Timeout,
 }
 
 impl ResponseError for HttpError {
@@ -32,9 +26,7 @@ impl ResponseError for HttpError {
 
     fn status_code(&self) -> StatusCode {
         match *self {
-            HttpError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
             HttpError::BadRequest => StatusCode::BAD_REQUEST,
-            HttpError::Timeout => StatusCode::GATEWAY_TIMEOUT,
         }
     }
 }

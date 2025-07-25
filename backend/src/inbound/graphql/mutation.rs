@@ -6,7 +6,7 @@ use crate::inbound::graphql::{GraphQLContext, dto::GraphQLGameInput};
 #[derive(Clone, Copy, Debug)]
 pub struct Mutation;
 
-/// The root query object of the schema
+/// The root mutation object of the schema
 #[graphql_object(context = GraphQLContext)]
 impl Mutation {
     async fn store_games(
