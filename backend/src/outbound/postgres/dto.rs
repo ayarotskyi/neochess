@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use diesel::prelude::*;
 
 use crate::{
@@ -17,9 +19,12 @@ use crate::{
 pub struct GameDto {
     pub id: uuid::Uuid,
     pub white: String,
+    pub white_elo: i16,
     pub black: String,
+    pub black_elo: i16,
     pub platform_name: PlatformName,
     pub pgn: String,
+    pub finished_at: SystemTime,
 }
 
 impl From<GameDto> for Game {
@@ -27,9 +32,12 @@ impl From<GameDto> for Game {
         Self::new(
             value.id,
             value.white,
+            value.white_elo as i8,
             value.black,
+            value.black_elo as i8,
             value.platform_name,
             Pgn::new_unchecked(&value.pgn),
+            value.finished_at,
         )
     }
 }

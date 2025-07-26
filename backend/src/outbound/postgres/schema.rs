@@ -4,9 +4,12 @@ diesel::table! {
     game (id) {
         id -> Uuid,
         white -> Varchar,
+        white_elo -> Int2,
         black -> Varchar,
+        black_elo -> Int2,
         platform_name -> Varchar,
         pgn -> Varchar,
+        finished_at -> Timestamptz,
     }
 }
 

@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    time::SystemTime,
+};
 
 use thiserror::Error;
 
@@ -7,28 +10,37 @@ use crate::domain::platform::models::PlatformName;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Game {
     id: uuid::Uuid,
-    /// identifier of the player with white
+    /// username of the player with white
     white: String,
-    /// identifier of the player with black
+    white_elo: i8,
+    /// username of the player with black
     black: String,
+    black_elo: i8,
     platform_name: PlatformName,
     pgn: Pgn,
+    finished_at: SystemTime,
 }
 
 impl Game {
     pub fn new(
         id: uuid::Uuid,
         white: String,
+        white_elo: i8,
         black: String,
+        black_elo: i8,
         platform_name: PlatformName,
         pgn: Pgn,
+        finished_at: SystemTime,
     ) -> Self {
         Self {
             id: id,
             white: white,
+            white_elo: white_elo,
             black: black,
+            black_elo: black_elo,
             platform_name: platform_name,
             pgn: pgn,
+            finished_at: finished_at,
         }
     }
 
@@ -40,8 +52,16 @@ impl Game {
         &self.white
     }
 
+    pub fn white_elo(&self) -> &i8 {
+        &self.white_elo
+    }
+
     pub fn black(&self) -> &String {
         &self.black
+    }
+
+    pub fn black_elo(&self) -> &i8 {
+        &self.black_elo
     }
 
     pub fn platform_name(&self) -> &PlatformName {
@@ -51,23 +71,41 @@ impl Game {
     pub fn pgn(&self) -> &Pgn {
         &self.pgn
     }
+
+    pub fn finished_at(&self) -> &SystemTime {
+        &self.finished_at
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewGame {
     white: String,
+    white_elo: i8,
     black: String,
+    black_elo: i8,
     platform_name: PlatformName,
     pgn: String,
+    finished_at: SystemTime,
 }
 
 impl NewGame {
-    pub fn new(white: String, black: String, platform_name: PlatformName, pgn: String) -> Self {
+    pub fn new(
+        white: String,
+        white_elo: i8,
+        black: String,
+        black_elo: i8,
+        platform_name: PlatformName,
+        pgn: String,
+        finished_at: SystemTime,
+    ) -> Self {
         Self {
             white: white,
+            white_elo: white_elo,
             black: black,
+            black_elo: black_elo,
             platform_name: platform_name,
             pgn: pgn,
+            finished_at: finished_at,
         }
     }
 
@@ -75,8 +113,16 @@ impl NewGame {
         &self.white
     }
 
+    pub fn white_elo(&self) -> &i8 {
+        &self.white_elo
+    }
+
     pub fn black(&self) -> &String {
         &self.black
+    }
+
+    pub fn black_elo(&self) -> &i8 {
+        &self.black_elo
     }
 
     pub fn platform_name(&self) -> &PlatformName {
@@ -85,6 +131,10 @@ impl NewGame {
 
     pub fn pgn(&self) -> &String {
         &self.pgn
+    }
+
+    pub fn finished_at(&self) -> &SystemTime {
+        &self.finished_at
     }
 }
 
