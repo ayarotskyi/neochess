@@ -7,6 +7,8 @@ diesel::table! {
         white_elo -> Int2,
         black -> Varchar,
         black_elo -> Int2,
+        #[max_length = 5]
+        winner -> Bpchar,
         platform_name -> Varchar,
         pgn -> Varchar,
         finished_at -> Timestamptz,

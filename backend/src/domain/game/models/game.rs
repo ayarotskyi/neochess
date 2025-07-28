@@ -3,10 +3,16 @@ use std::{
     time::SystemTime,
 };
 
+use strum_macros::{EnumString, IntoStaticStr};
 use thiserror::Error;
 
 use crate::domain::platform::models::PlatformName;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString, IntoStaticStr)]
+pub enum Color {
+    White,
+    Black,
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Game {
     id: uuid::Uuid,
@@ -16,6 +22,8 @@ pub struct Game {
     /// username of the player with black
     black: String,
     black_elo: i8,
+    winner: Option<Color>,
+    /// platform name where the game was played
     platform_name: PlatformName,
     pgn: Pgn,
     finished_at: SystemTime,
@@ -28,6 +36,7 @@ impl Game {
         white_elo: i8,
         black: String,
         black_elo: i8,
+        winner: Option<Color>,
         platform_name: PlatformName,
         pgn: Pgn,
         finished_at: SystemTime,
@@ -38,6 +47,7 @@ impl Game {
             white_elo: white_elo,
             black: black,
             black_elo: black_elo,
+            winner: winner,
             platform_name: platform_name,
             pgn: pgn,
             finished_at: finished_at,
@@ -75,6 +85,10 @@ impl Game {
     pub fn finished_at(&self) -> &SystemTime {
         &self.finished_at
     }
+
+    pub fn winner(&self) -> Option<&Color> {
+        self.winner.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -83,6 +97,7 @@ pub struct NewGame {
     white_elo: i8,
     black: String,
     black_elo: i8,
+    winner: Option<Color>,
     platform_name: PlatformName,
     pgn: String,
     finished_at: SystemTime,
@@ -94,6 +109,7 @@ impl NewGame {
         white_elo: i8,
         black: String,
         black_elo: i8,
+        winner: Option<Color>,
         platform_name: PlatformName,
         pgn: String,
         finished_at: SystemTime,
@@ -103,6 +119,7 @@ impl NewGame {
             white_elo: white_elo,
             black: black,
             black_elo: black_elo,
+            winner: winner,
             platform_name: platform_name,
             pgn: pgn,
             finished_at: finished_at,

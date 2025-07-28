@@ -1,16 +1,19 @@
-use std::time::SystemTime;
+use std::{str::FromStr, time::SystemTime};
 
 use diesel::prelude::*;
 
 use crate::{
     domain::{
         game::models::{
-            game::{Game, NewGame, Pgn},
+            game::{Color, Game, NewGame, Pgn},
             position::{Fen, Position},
         },
         platform::models::PlatformName,
     },
-    outbound::postgres::schema::{game, game_position, position},
+    outbound::postgres::schema::{
+        game::{self},
+        game_position, position,
+    },
 };
 
 /// DTO for game model
@@ -22,6 +25,7 @@ pub struct GameDto {
     pub white_elo: i16,
     pub black: String,
     pub black_elo: i16,
+    pub winner: Option<String>,
     pub platform_name: PlatformName,
     pub pgn: String,
     pub finished_at: SystemTime,
@@ -35,6 +39,10 @@ impl From<GameDto> for Game {
             value.white_elo as i8,
             value.black,
             value.black_elo as i8,
+            match value.winner {
+                Some(value) => Color::from_str(&value).ok(),
+                None => None,
+            },
             value.platform_name,
             Pgn::new_unchecked(&value.pgn),
             value.finished_at,

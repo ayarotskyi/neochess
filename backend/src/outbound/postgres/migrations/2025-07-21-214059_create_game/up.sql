@@ -4,6 +4,7 @@ CREATE TABLE game (
     white_elo SMALLINT NOT NULL,
     black VARCHAR NOT NULL,
     black_elo SMALLINT NOT NULL,
+    winner CHAR(5),
     platform_name VARCHAR NOT NULL,
     pgn VARCHAR NOT NULL,
     finished_at TIMESTAMP WITH TIME ZONE NOT NULL
