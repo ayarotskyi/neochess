@@ -42,8 +42,7 @@ services:
       else
         if ! command -v cargo-watch >/dev/null; then
           cargo install cargo-watch;
-        fi &&
-        cargo watch -x run;
+        fi && cargo watch -x test -x run;
       fi
       "
 
