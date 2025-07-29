@@ -1,5 +1,5 @@
 use crate::{
-    domain::game::ports::GameService,
+    domain::{game::ports::GameService, platform::ports::PlatformService},
     inbound::{graphql::GraphQLContext, http::AppData},
 };
 use actix_http::StatusCode;
@@ -39,17 +39,20 @@ pub async fn playground(graphql_endpoint_url: &str) -> Result<HttpResponse, Erro
     }
 }
 
-pub async fn graphql<GS>(
+pub async fn graphql<GS: GameService, PS: PlatformService>(
     req: HttpRequest,
     payload: web::Payload,
-    app_data: Data<AppData<GS>>,
+    app_data: Data<AppData<GS, PS>>,
 ) -> Result<HttpResponse, Error>
 where
     GS: GameService,
 {
     graphql_handler(
         &app_data.schema,
-        &GraphQLContext::new(app_data.game_service.clone()),
+        &GraphQLContext::new(
+            app_data.game_service.clone(),
+            app_data.platform_service.clone(),
+        ),
         req,
         payload,
     )

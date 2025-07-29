@@ -8,7 +8,7 @@ diesel::table! {
         black -> Varchar,
         black_elo -> Int2,
         #[max_length = 5]
-        winner -> Bpchar,
+        winner -> Nullable<Bpchar>,
         platform_name -> Varchar,
         pgn -> Varchar,
         finished_at -> Timestamptz,
@@ -20,6 +20,7 @@ diesel::table! {
         game_id -> Uuid,
         position_id -> Uuid,
         move_idx -> Int2,
+        next_move_san -> Nullable<Text>,
     }
 }
 

@@ -3,7 +3,7 @@ pub mod inbound;
 pub mod outbound;
 
 use crate::{
-    domain::game::service::Service,
+    domain::{game, platform},
     inbound::http::{HttpServer, HttpServerConfig},
     outbound::postgres::Postgres,
 };
@@ -22,9 +22,10 @@ async fn main() -> anyhow::Result<()> {
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let postgres = Postgres::new(database_url);
-    let game_service = Service::new(postgres);
+    let game_service = game::service::Service::new(postgres);
+    let platform_service = platform::service::Service::new();
 
-    let server = HttpServer::new(server_config, game_service).unwrap();
+    let server = HttpServer::new(server_config, game_service, platform_service).unwrap();
 
     server.run().await
 }

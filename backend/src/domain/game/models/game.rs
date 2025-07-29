@@ -100,7 +100,7 @@ pub struct NewGame {
     winner: Option<Color>,
     platform_name: PlatformName,
     pgn: String,
-    finished_at: SystemTime,
+    finished_at: u64,
 }
 
 impl NewGame {
@@ -112,7 +112,7 @@ impl NewGame {
         winner: Option<Color>,
         platform_name: PlatformName,
         pgn: String,
-        finished_at: SystemTime,
+        finished_at: u64,
     ) -> Self {
         Self {
             white: white,
@@ -142,6 +142,10 @@ impl NewGame {
         &self.black_elo
     }
 
+    pub fn winner(&self) -> Option<&Color> {
+        self.winner.as_ref()
+    }
+
     pub fn platform_name(&self) -> &PlatformName {
         &self.platform_name
     }
@@ -150,7 +154,7 @@ impl NewGame {
         &self.pgn
     }
 
-    pub fn finished_at(&self) -> &SystemTime {
+    pub fn finished_at(&self) -> &u64 {
         &self.finished_at
     }
 }

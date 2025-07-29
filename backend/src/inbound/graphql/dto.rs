@@ -1,10 +1,10 @@
 use std::time::{Duration, UNIX_EPOCH};
 
-use juniper::{GraphQLEnum, GraphQLInputObject, GraphQLObject};
+use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
 use crate::domain::{
-    game::models::game::{Color, Game, NewGame},
+    game::models::game::{Color, Game},
     platform::models::PlatformName,
 };
 
@@ -87,31 +87,7 @@ impl From<Color> for GraphQLColor {
     }
 }
 
-#[derive(Clone, GraphQLInputObject)]
-pub struct GraphQLGameInput {
-    white: String,
-    white_elo: i32,
-    black: String,
-    black_elo: i32,
-    winner: Option<GraphQLColor>,
-    platform_name: GraphQLPlatformName,
-    pgn: String,
-    finished_at: i32,
-}
-
-impl Into<NewGame> for GraphQLGameInput {
-    fn into(self) -> NewGame {
-        NewGame::new(
-            self.white,
-            self.white_elo as i8,
-            self.black,
-            self.black_elo as i8,
-            None,
-            self.platform_name.into(),
-            self.pgn,
-            UNIX_EPOCH
-                .checked_add(Duration::from_millis(self.finished_at as u64))
-                .unwrap_or(UNIX_EPOCH),
-        )
-    }
+#[derive(GraphQLObject, Clone)]
+struct GraphQLMoveStat {
+    pub move_san: String,
 }

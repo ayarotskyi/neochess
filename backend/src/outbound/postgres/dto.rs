@@ -1,5 +1,6 @@
 use std::{str::FromStr, time::SystemTime};
 
+use chrono::{MappedLocalTime, TimeZone, Utc};
 use diesel::prelude::*;
 
 use crate::{
@@ -53,19 +54,35 @@ impl From<GameDto> for Game {
 #[diesel(table_name = game)]
 pub struct NewGameDto {
     pub white: String,
+    pub white_elo: i16,
     pub black: String,
+    pub black_elo: i16,
+    pub winner: Option<String>,
     pub platform_name: String,
     pub pgn: String,
+    finished_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl From<NewGame> for NewGameDto {
     fn from(value: NewGame) -> Self {
         Self {
             white: value.white().clone(),
+            white_elo: *value.white_elo() as i16,
             black: value.black().clone(),
+            black_elo: *value.black_elo() as i16,
+            winner: value
+                .winner()
+                .map(|color| Into::<&'static str>::into(color.clone()).to_string()),
             platform_name: <&PlatformName as Into<&'static str>>::into(value.platform_name())
                 .to_string(),
             pgn: value.pgn().to_string(),
+            finished_at: match Utc.timestamp_millis_opt(*value.finished_at() as i64) {
+                MappedLocalTime::Single(dt) => dt,
+                MappedLocalTime::Ambiguous(dt, _) => dt,
+                MappedLocalTime::None => {
+                    unreachable!("Invalid timestamp for finished_at: {}", value.finished_at())
+                }
+            },
         }
     }
 }
@@ -99,4 +116,5 @@ pub struct GamePositionDto {
     pub game_id: uuid::Uuid,
     pub position_id: uuid::Uuid,
     pub move_idx: i16,
+    pub next_move_san: Option<String>,
 }

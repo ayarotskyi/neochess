@@ -1,7 +1,7 @@
 mod handlers;
 
 use crate::{
-    domain::game::ports::GameService,
+    domain::{game::ports::GameService, platform::ports::PlatformService},
     inbound::graphql::{Schema, schema},
 };
 use actix_cors::Cors;
@@ -20,9 +20,10 @@ pub struct HttpServerConfig {
     pub addr: SocketAddr,
 }
 
-struct AppData<GS: GameService> {
+struct AppData<GS: GameService, PS: PlatformService> {
     pub schema: Schema,
     pub game_service: Arc<GS>,
+    pub platform_service: Arc<PS>,
 }
 
 pub struct HttpServer {
@@ -30,17 +31,20 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
-    pub fn new<GS: GameService>(
+    pub fn new<GS: GameService, PS: PlatformService>(
         config: HttpServerConfig,
         game_service: GS,
+        platform_service: PS,
     ) -> anyhow::Result<Self> {
         let game_service_arc = Arc::new(game_service);
+        let platform_service_arc = Arc::new(platform_service);
         Ok(Self {
             server: actix_web::HttpServer::new(move || {
                 App::new()
                     .app_data(Data::new(AppData {
                         schema: schema(),
                         game_service: game_service_arc.clone(),
+                        platform_service: platform_service_arc.clone(),
                     }))
                     .wrap(
                         Cors::default()
@@ -55,8 +59,8 @@ impl HttpServer {
                     .wrap(middleware::Logger::default())
                     .service(
                         web::resource("/graphql")
-                            .route(web::post().to(handlers::graphql::<GS>))
-                            .route(web::get().to(handlers::graphql::<GS>)),
+                            .route(web::post().to(handlers::graphql::<GS, PS>))
+                            .route(web::get().to(handlers::graphql::<GS, PS>)),
                     )
                     .service(
                         web::resource("/playground")

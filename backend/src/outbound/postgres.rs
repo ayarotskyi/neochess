@@ -61,16 +61,18 @@ impl Postgres {
                 for new_game in new_games {
                     let mut reader = Reader::new(io::Cursor::new(new_game.pgn()));
 
-                    let fen_vec = reader
+                    let position_metadata_vec = reader
                         .read_game(&mut PositionVisitor::new(new_game.pgn().into()))
                         .map_err(|_| InvalidPgnError(new_game.pgn().into()))?
                         .unwrap_or(Err(InvalidPgnError(new_game.pgn().into())))?;
 
                     let position_ids: Vec<uuid::Uuid> = insert_into(position::table)
                         .values(
-                            &fen_vec
-                                .into_iter()
-                                .map(|f| NewPositionDto { fen: f.to_string() })
+                            &position_metadata_vec
+                                .iter()
+                                .map(|metadata| NewPositionDto {
+                                    fen: metadata.fen.to_string(),
+                                })
                                 .collect::<Vec<NewPositionDto>>(),
                         )
                         .on_conflict_do_nothing()
@@ -105,6 +107,9 @@ impl Postgres {
                                     game_id: game_id,
                                     position_id: position_id,
                                     move_idx: index as i16,
+                                    next_move_san: position_metadata_vec.get(index).and_then(
+                                        |metadata| metadata.next_move_san.map(|s| s.to_string()),
+                                    ),
                                 })
                                 .collect::<Vec<GamePositionDto>>(),
                         )

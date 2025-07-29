@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use anyhow::anyhow;
 
 use crate::domain::{
@@ -54,7 +52,7 @@ impl Into<NewGame> for ChessComGameResponse {
                 .or_else(|| (self.black.result.to_lowercase() == "win").then_some(Color::Black)),
             PlatformName::ChessCom,
             self.pgn,
-            SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(self.end_time),
+            self.end_time,
         )
     }
 }
