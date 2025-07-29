@@ -16,9 +16,12 @@ use tokio::task;
 use uuid::Uuid;
 
 use crate::{
-    domain::game::{
-        models::game::{CreateGamesError, InvalidPgnError, NewGame},
-        ports::GameRepository,
+    domain::{
+        game::{
+            models::game::{GameRepositoryError, InvalidPgnError, NewGame},
+            ports::GameRepository,
+        },
+        platform::models::PlatformName,
     },
     outbound::{
         position_visitor::PositionVisitor,
@@ -43,10 +46,7 @@ impl Postgres {
         }
     }
 
-    pub async fn save_games(
-        &self,
-        new_games: Vec<NewGame>,
-    ) -> Result<Vec<Uuid>, CreateGamesPostgresError> {
+    pub async fn save_games(&self, new_games: Vec<NewGame>) -> Result<Vec<Uuid>, PostgresError> {
         let pool = self.pool.clone();
 
         let result = task::spawn_blocking(move || {
@@ -80,9 +80,7 @@ impl Postgres {
                         .get_results(conn)?;
 
                     if position_ids.len() == 0 {
-                        return Err(CreateGamesPostgresError::Unknown(anyhow!(
-                            "no position is stored"
-                        )));
+                        return Err(PostgresError::Unknown(anyhow!("no position is stored")));
                     }
 
                     let game_ids: Vec<uuid::Uuid> = insert_into(game::table)
@@ -91,9 +89,7 @@ impl Postgres {
                         .get_results(conn)?;
 
                     if game_ids.len() == 0 {
-                        return Err(CreateGamesPostgresError::Unknown(anyhow!(
-                            "no game is stored"
-                        )));
+                        return Err(PostgresError::Unknown(anyhow!("no game is stored")));
                     }
 
                     let game_id = game_ids[0];
@@ -118,19 +114,45 @@ impl Postgres {
                     resulting_ids.push(game_id);
                 }
 
-                Ok::<Vec<Uuid>, CreateGamesPostgresError>(resulting_ids)
+                Ok::<Vec<Uuid>, PostgresError>(resulting_ids)
             })?;
 
-            Ok::<Vec<Uuid>, CreateGamesPostgresError>(game_ids)
+            Ok::<Vec<Uuid>, PostgresError>(game_ids)
         })
         .await?;
 
         result
     }
+
+    pub async fn latest_game_timestamp_by_username(
+        &self,
+        platform_name: String,
+        username: String,
+    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, PostgresError> {
+        let pool = self.pool.clone();
+
+        task::spawn_blocking(move || {
+            use schema::game;
+
+            let mut conn = pool.get()?;
+            game::dsl::game
+                .filter(schema::game::columns::platform_name.eq(platform_name))
+                .filter(
+                    schema::game::columns::white
+                        .eq(username.clone())
+                        .or(schema::game::columns::black.eq(username.clone())),
+                )
+                .select(diesel::dsl::max(game::columns::finished_at))
+                .first::<Option<chrono::DateTime<chrono::Utc>>>(&mut conn)
+                .map_err(|e| PostgresError::DieselError(e))
+        })
+        .await
+        .map_err(|e| PostgresError::JoinError(e))?
+    }
 }
 
 #[derive(Debug, Error)]
-pub enum CreateGamesPostgresError {
+pub enum PostgresError {
     #[error(transparent)]
     DieselError(#[from] diesel::result::Error),
     #[error(transparent)]
@@ -143,23 +165,36 @@ pub enum CreateGamesPostgresError {
     Unknown(#[from] anyhow::Error),
 }
 
-impl From<CreateGamesPostgresError> for CreateGamesError {
-    fn from(value: CreateGamesPostgresError) -> Self {
+impl From<PostgresError> for GameRepositoryError {
+    fn from(value: PostgresError) -> Self {
         match value {
-            CreateGamesPostgresError::ConnectionError(err) => {
-                CreateGamesError::ConnectionError(err.to_string())
+            PostgresError::ConnectionError(err) => {
+                GameRepositoryError::ConnectionError(err.to_string())
             }
-            CreateGamesPostgresError::DieselError(err) => {
-                CreateGamesError::DatabaseError(err.to_string())
-            }
-            err => CreateGamesError::Unknown(anyhow::anyhow!(err)),
+            PostgresError::DieselError(err) => GameRepositoryError::DatabaseError(err.to_string()),
+            err => GameRepositoryError::Unknown(anyhow::anyhow!(err)),
         }
     }
 }
 
 #[async_trait]
 impl GameRepository for Postgres {
-    async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, CreateGamesError> {
+    async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, GameRepositoryError> {
         Ok(self.save_games(games).await?)
+    }
+
+    async fn get_latest_game_timestamp(
+        &self,
+        platform_name: PlatformName,
+        username: String,
+    ) -> Result<Option<u64>, GameRepositoryError> {
+        let timestamp = self
+            .latest_game_timestamp_by_username(
+                Into::<&'static str>::into(platform_name).to_string(),
+                username,
+            )
+            .await?;
+
+        Ok(timestamp.map(|ts| ts.timestamp_millis() as u64))
     }
 }

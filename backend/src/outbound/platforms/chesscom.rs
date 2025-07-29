@@ -1,10 +1,11 @@
 use anyhow::anyhow;
+use chrono::Datelike;
 
 use crate::domain::{
     game::models::game::{Color, NewGame},
     platform::{
         models::{PlatformError, PlatformName},
-        ports::{FetchGamesParameters, PlatformApiClient},
+        ports::PlatformApiClient,
     },
 };
 
@@ -17,6 +18,104 @@ impl ChessComClient {
         Self {
             client: reqwest::Client::new(),
         }
+    }
+
+    async fn fetch_player_archives(
+        &self,
+        username: String,
+    ) -> Result<ChessComPlayerArchivesResponse, PlatformError> {
+        let url = format!(
+            "https://api.chess.com/pub/player/{}/games/archives",
+            username
+        );
+
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| PlatformError::NetworkError(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| PlatformError::ApiError(e.to_string()))?;
+
+        response
+            .json::<ChessComPlayerArchivesResponse>()
+            .await
+            .map_err(|e| PlatformError::ParseError(format!("Failed to parse archives: {}", e)))
+    }
+
+    async fn fetch_games_by_archives(
+        &self,
+        archives: Vec<String>,
+    ) -> Result<Vec<NewGame>, PlatformError> {
+        let tasks = archives
+            .iter()
+            .map(|archive_url| {
+                let client = self.client.clone();
+                let url = archive_url.clone();
+                tokio::spawn(async move {
+                    let response = client
+                        .get(&url)
+                        .send()
+                        .await
+                        .map_err(|e| PlatformError::NetworkError(e.to_string()))?
+                        .error_for_status()
+                        .map_err(|e| PlatformError::ApiError(e.to_string()))?;
+
+                    let archive: ChessComArchiveResponse = response.json().await.map_err(|e| {
+                        PlatformError::ParseError(format!("Failed to parse games: {}", e))
+                    })?;
+
+                    let games = archive
+                        .games
+                        .into_iter()
+                        .map(|game| game.into())
+                        .collect::<Vec<NewGame>>();
+
+                    Ok::<Vec<NewGame>, PlatformError>(games)
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut new_games = Vec::new();
+
+        let results = futures::future::try_join_all(tasks)
+            .await
+            .map_err(|e| PlatformError::Unknown(anyhow!(e)))?;
+
+        for result in results {
+            match result {
+                Ok(games) => new_games.extend(games),
+                Err(e) => return Err(e),
+            }
+        }
+
+        Ok(new_games)
+    }
+
+    fn filter_archives_by_timestamp(
+        &self,
+        archives: Vec<String>,
+        from_timestamp: u64,
+    ) -> Vec<String> {
+        archives
+            .into_iter()
+            .filter(|archive| {
+                let data_arr = archive.split('/').collect::<Vec<&str>>();
+                let month_str = *data_arr.get(data_arr.len() - 1).unwrap_or(&"");
+                let year_str = *data_arr.get(data_arr.len() - 2).unwrap_or(&"");
+                let archive_month = month_str.parse::<u64>().unwrap_or(0);
+                let archive_year = year_str.parse::<u64>().unwrap_or(0);
+                let from_date_time = chrono::DateTime::from_timestamp_millis(from_timestamp as i64);
+                match from_date_time {
+                    Some(from_date_time) => {
+                        archive_month >= from_date_time.month() as u64
+                            && archive_year >= from_date_time.year() as u64
+                    }
+                    None => false,
+                }
+            })
+            .collect()
     }
 }
 
@@ -66,67 +165,53 @@ struct ChessComArchiveResponse {
 impl PlatformApiClient for ChessComClient {
     async fn fetch_games(
         &self,
-        params: FetchGamesParameters,
+        user_name: String,
+        from_timestamp: Option<u64>,
     ) -> Result<Vec<NewGame>, PlatformError> {
-        let url = format!(
-            "https://api.chess.com/pub/player/{}/games/archives",
-            params.user_name
+        let archives_response = self.fetch_player_archives(user_name.clone()).await?;
+
+        // Filter archives based on the from_timestamp
+        let archives = if let Some(timestamp) = from_timestamp {
+            self.filter_archives_by_timestamp(archives_response.archives, timestamp)
+        } else {
+            archives_response.archives
+        };
+
+        let new_games = self.fetch_games_by_archives(archives).await;
+
+        new_games
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_filter_archives_by_timestamp_filters_correctly() {
+        let client = ChessComClient::new();
+        // Example archives: year/month at the end
+        let archives = vec![
+            "https://api.chess.com/pub/player/test/games/2024/03".to_string(),
+            "https://api.chess.com/pub/player/test/games/2024/04".to_string(),
+            "https://api.chess.com/pub/player/test/games/2024/05".to_string(),
+            "https://api.chess.com/pub/player/test/games/2024/06".to_string(),
+        ];
+        // Timestamp for 2024-05-01
+        let from_timestamp = chrono::NaiveDate::from_ymd_opt(2024, 5, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp_millis() as u64;
+
+        let filtered = client.filter_archives_by_timestamp(archives, from_timestamp);
+
+        assert!(
+            filtered
+                .iter()
+                .all(|url| url.contains("2024/05") || url.contains("2024/06"))
         );
-
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| PlatformError::NetworkError(anyhow!(e)))?
-            .error_for_status()
-            .map_err(|e| PlatformError::ApiError(e.to_string()))?;
-
-        let archives: Vec<String> = response
-            .json::<ChessComPlayerArchivesResponse>()
-            .await
-            .map_err(|e| PlatformError::ParseError(format!("Failed to parse archives: {}", e)))?
-            .archives;
-
-        let handles = archives
-            .iter()
-            .map(|archive_url| {
-                let client = self.client.clone();
-                let url = archive_url.clone();
-                tokio::spawn(async move {
-                    let response = client
-                        .get(&url)
-                        .send()
-                        .await
-                        .map_err(|e| PlatformError::NetworkError(anyhow!(e)))?
-                        .error_for_status()
-                        .map_err(|e| PlatformError::ApiError(e.to_string()))?;
-
-                    let archive: ChessComArchiveResponse = response.json().await.map_err(|e| {
-                        PlatformError::ParseError(format!("Failed to parse games: {}", e))
-                    })?;
-
-                    let games = archive
-                        .games
-                        .into_iter()
-                        .map(|game| game.into())
-                        .collect::<Vec<NewGame>>();
-
-                    Ok::<Vec<NewGame>, PlatformError>(games)
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let mut results = Vec::new();
-        for handle in handles {
-            match handle.await {
-                Ok(result) => {
-                    results.extend(result?);
-                }
-                Err(e) => return Err(PlatformError::NetworkError(anyhow!(e))),
-            }
-        }
-
-        Ok(results)
+        assert_eq!(filtered.len(), 2);
     }
 }

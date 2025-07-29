@@ -10,7 +10,7 @@ use crate::domain::{
 
 #[derive(GraphQLEnum, Clone)]
 #[graphql(name = "PlatformName")]
-enum GraphQLPlatformName {
+pub enum GraphQLPlatformName {
     ChessCom,
 }
 
@@ -88,6 +88,9 @@ impl From<Color> for GraphQLColor {
 }
 
 #[derive(GraphQLObject, Clone)]
-struct GraphQLMoveStat {
+pub struct GraphQLMoveStat {
     pub move_san: String,
+    pub play_rate: f64,
+    pub win_rate: f64,
+    pub draw_rate: f64,
 }

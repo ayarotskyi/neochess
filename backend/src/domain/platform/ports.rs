@@ -4,15 +4,12 @@ use crate::domain::{
 };
 use async_trait::async_trait;
 
-pub struct FetchGamesParameters {
-    pub user_name: String,
-}
-
 #[async_trait]
 pub trait PlatformApiClient: Send + Sync + 'static {
     async fn fetch_games(
         &self,
-        params: FetchGamesParameters,
+        user_name: String,
+        from_timestamp: Option<u64>,
     ) -> Result<Vec<NewGame>, PlatformError>;
 }
 
@@ -20,7 +17,8 @@ pub trait PlatformApiClient: Send + Sync + 'static {
 pub trait PlatformService: Send + Sync + 'static {
     async fn fetch_games(
         &self,
-        params: FetchGamesParameters,
+        user_name: String,
+        from_timestamp: Option<u64>,
         platform_name: PlatformName,
     ) -> Result<Vec<NewGame>, PlatformError>;
 }

@@ -193,7 +193,7 @@ impl Display for Pgn {
 }
 
 #[derive(Debug, Error)]
-pub enum CreateGamesError {
+pub enum GameRepositoryError {
     #[error("database error: {0}")]
     DatabaseError(String),
     #[error("connection failed: {0}")]

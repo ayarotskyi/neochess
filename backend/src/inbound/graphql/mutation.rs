@@ -8,7 +8,7 @@ pub struct Mutation;
 /// The root mutation object of the schema
 #[graphql_object(context = GraphQLContext)]
 impl Mutation {
-    async fn store_games(#[graphql(context)] _ctx: &GraphQLContext) -> FieldResult<bool> {
-        Ok(true)
+    async fn hello_world(#[graphql(context)] _ctx: &GraphQLContext) -> FieldResult<String> {
+        Ok(format!("Hello, {}!", "world"))
     }
 }

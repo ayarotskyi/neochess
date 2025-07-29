@@ -10,9 +10,11 @@ pub enum PlatformError {
     #[error("Adapter not implemented for platform: {0}")]
     PlatformNotFound(String),
     #[error("Request to platform failed: {0}")]
-    NetworkError(#[from] anyhow::Error),
+    NetworkError(String),
     #[error("Failed to parse response from platform: {0}")]
     ParseError(String),
     #[error("API error from platform: {0}")]
     ApiError(String),
+    #[error("Unknown error: {0}")]
+    Unknown(#[from] anyhow::Error),
 }

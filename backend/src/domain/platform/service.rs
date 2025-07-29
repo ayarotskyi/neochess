@@ -2,7 +2,7 @@ use crate::domain::{
     game::models::game::NewGame,
     platform::{
         models::{PlatformError, PlatformName},
-        ports::{FetchGamesParameters, PlatformApiClient, PlatformService},
+        ports::{PlatformApiClient, PlatformService},
     },
 };
 
@@ -28,7 +28,8 @@ impl Service {
 impl PlatformService for Service {
     async fn fetch_games(
         &self,
-        params: FetchGamesParameters,
+        user_name: String,
+        from_timestamp: Option<u64>,
         platform_name: PlatformName,
     ) -> Result<Vec<NewGame>, PlatformError> {
         let client = self
@@ -38,6 +39,6 @@ impl PlatformService for Service {
                 Into::<&'static str>::into(platform_name).to_string(),
             ))?;
 
-        client.fetch_games(params).await
+        client.fetch_games(user_name, from_timestamp).await
     }
 }

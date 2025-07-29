@@ -17,6 +17,7 @@ diesel = { version = "2.2.12", features = [
     "r2d2",
     "chrono",
 ] }
+futures = "0.3.31"
 juniper = { version = "0.16.2", features = ["uuid"] }
 juniper_actix = "0.6.0"
 pgn-reader = "0.28.0"
