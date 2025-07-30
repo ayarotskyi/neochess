@@ -57,4 +57,31 @@ where
 
         return result;
     }
+
+    async fn get_move_stats(
+        &self,
+        position_fen: String,
+        username: String,
+        platform_name: PlatformName,
+        from_timestamp: Option<i32>,
+        to_timestamp: Option<i32>,
+    ) -> Result<Vec<super::models::position::MoveStat>, super::models::game::GameRepositoryError>
+    {
+        let result = self
+            .repo
+            .get_move_stats(
+                position_fen,
+                username,
+                platform_name,
+                from_timestamp,
+                to_timestamp,
+            )
+            .await;
+
+        let _ = result
+            .as_ref()
+            .inspect_err(|err| eprintln!("failed to get move stats: {}", *err));
+
+        return result;
+    }
 }

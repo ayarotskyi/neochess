@@ -5,10 +5,12 @@ use std::io;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use diesel::{
     dsl::insert_into,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
+    upsert::excluded,
 };
 use pgn_reader::Reader;
 use thiserror::Error;
@@ -18,7 +20,10 @@ use uuid::Uuid;
 use crate::{
     domain::{
         game::{
-            models::game::{GameRepositoryError, InvalidPgnError, NewGame},
+            models::{
+                game::{Color, GameRepositoryError, InvalidPgnError, NewGame},
+                position::MoveStat,
+            },
             ports::GameRepository,
         },
         platform::models::PlatformName,
@@ -75,12 +80,18 @@ impl Postgres {
                                 })
                                 .collect::<Vec<NewPositionDto>>(),
                         )
-                        .on_conflict_do_nothing()
+                        .on_conflict(position::columns::fen)
+                        .do_update()
+                        .set(position::columns::fen.eq(excluded(position::columns::fen)))
                         .returning(position::id)
                         .get_results(conn)?;
 
-                    if position_ids.len() == 0 {
-                        return Err(PostgresError::Unknown(anyhow!("no position is stored")));
+                    if position_ids.len() != position_metadata_vec.len() {
+                        return Err(PostgresError::Unknown(anyhow!(
+                            "expected to store {} positions, but got {}",
+                            position_metadata_vec.len(),
+                            position_ids.len()
+                        )));
                     }
 
                     let game_ids: Vec<uuid::Uuid> = insert_into(game::table)
@@ -149,6 +160,86 @@ impl Postgres {
         .await
         .map_err(|e| PostgresError::JoinError(e))?
     }
+
+    pub async fn query_move_stats(
+        &self,
+        position_fen: String,
+        username: String,
+        play_as: Color,
+        platform_name: PlatformName,
+        from_timestamp: Option<i32>,
+        to_timestamp: Option<i32>,
+    ) -> Result<Vec<MoveStat>, PostgresError> {
+        let pool = self.pool.clone();
+
+        task::spawn_blocking(move || {
+            use schema::game;
+            use schema::game_position;
+            use schema::position;
+
+            let mut conn = pool.get()?;
+
+            let mut query = game::dsl::game
+                .inner_join(
+                    game_position::dsl::game_position
+                        .on(game::columns::id.eq(game_position::columns::game_id)),
+                )
+                .inner_join(
+                    position::dsl::position
+                        .on(game_position::columns::position_id.eq(position::columns::id)),
+                )
+                .filter(
+                    game::columns::platform_name
+                        .eq(Into::<&'static str>::into(platform_name).to_string()),
+                )
+                .filter(position::columns::fen.eq(position_fen))
+                .into_boxed();
+
+            if play_as == Color::White {
+                query = query.filter(game::columns::white.eq(username));
+            } else {
+                query = query.filter(game::columns::black.eq(username));
+            }
+
+            if let Some(from) = from_timestamp {
+                query = query.filter(
+                    game::columns::finished_at.ge(chrono::DateTime::<chrono::Utc>::from_timestamp(
+                        from as i64,
+                        0,
+                    )
+                    .unwrap_or(DateTime::UNIX_EPOCH)),
+                );
+            }
+
+            if let Some(to) = to_timestamp {
+                query = query.filter(
+                    game::columns::finished_at.le(chrono::DateTime::<chrono::Utc>::from_timestamp(
+                        to as i64, 0,
+                    )
+                    .unwrap_or(Utc::now())),
+                );
+            }
+
+            Ok(Vec::new())
+
+            // let result: Vec<(String, i8, String, i8, i16, String)> = query.load(&mut conn)?;
+
+            // Ok(result
+            //     .into_iter()
+            //     .map(|(id, white, white_elo, black, black_elo, move_idx, fen)| {
+            //         MoveStat::new(
+            //             white,
+            //             white_elo,
+            //             black,
+            //             black_elo,
+            //             move_idx as usize,
+            //             fen,
+            //         )
+            //     })
+            //     .collect())
+        })
+        .await?
+    }
 }
 
 #[derive(Debug, Error)]
@@ -196,5 +287,25 @@ impl GameRepository for Postgres {
             .await?;
 
         Ok(timestamp.map(|ts| ts.timestamp_millis() as u64))
+    }
+
+    async fn get_move_stats(
+        &self,
+        position_fen: String,
+        username: String,
+        platform_name: PlatformName,
+        from_timestamp: Option<i32>,
+        to_timestamp: Option<i32>,
+    ) -> Result<Vec<MoveStat>, GameRepositoryError> {
+        Ok(self
+            .query_move_stats(
+                position_fen,
+                username,
+                Color::White, // Assuming the color is White for this example
+                platform_name,
+                from_timestamp,
+                to_timestamp,
+            )
+            .await?)
     }
 }

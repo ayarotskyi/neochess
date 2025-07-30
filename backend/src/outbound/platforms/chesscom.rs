@@ -15,8 +15,17 @@ pub struct ChessComClient {
 
 impl ChessComClient {
     pub fn new() -> Self {
+        let mut headers = reqwest::header::HeaderMap::new();
+        // Set user agent to avoid 403 Forbidden errors
+        headers.insert(
+            reqwest::header::USER_AGENT,
+            reqwest::header::HeaderValue::from_static("neochess/0.1"),
+        );
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .default_headers(headers)
+                .build()
+                .unwrap(),
         }
     }
 

@@ -46,6 +46,52 @@ impl Display for Fen {
     }
 }
 
+pub struct MoveStat {
+    move_san: String,
+    move_rate: f64,
+    win_rate: f64,
+    draw_rate: f64,
+    avg_opponent_elo: i8,
+}
+
+impl MoveStat {
+    pub fn new(
+        move_san: String,
+        move_rate: f64,
+        win_rate: f64,
+        draw_rate: f64,
+        avg_opponent_elo: i8,
+    ) -> Self {
+        Self {
+            move_san,
+            move_rate,
+            win_rate,
+            draw_rate,
+            avg_opponent_elo,
+        }
+    }
+
+    pub fn move_san(&self) -> &str {
+        &self.move_san
+    }
+
+    pub fn move_rate(&self) -> &f64 {
+        &self.move_rate
+    }
+
+    pub fn win_rate(&self) -> &f64 {
+        &self.win_rate
+    }
+
+    pub fn draw_rate(&self) -> &f64 {
+        &self.draw_rate
+    }
+
+    pub fn avg_opponent_elo(&self) -> &i8 {
+        &self.avg_opponent_elo
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
