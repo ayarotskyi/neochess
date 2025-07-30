@@ -107,24 +107,21 @@ impl ChessComClient {
         archives: Vec<String>,
         from_timestamp: u64,
     ) -> Vec<String> {
-        archives
-            .into_iter()
-            .filter(|archive| {
-                let data_arr = archive.split('/').collect::<Vec<&str>>();
-                let month_str = *data_arr.get(data_arr.len() - 1).unwrap_or(&"");
-                let year_str = *data_arr.get(data_arr.len() - 2).unwrap_or(&"");
-                let archive_month = month_str.parse::<u64>().unwrap_or(0);
-                let archive_year = year_str.parse::<u64>().unwrap_or(0);
-                let from_date_time = chrono::DateTime::from_timestamp_millis(from_timestamp as i64);
-                match from_date_time {
-                    Some(from_date_time) => {
-                        archive_month >= from_date_time.month() as u64
-                            && archive_year >= from_date_time.year() as u64
-                    }
-                    None => false,
-                }
-            })
-            .collect()
+        match chrono::DateTime::from_timestamp_millis((from_timestamp * 1000) as i64) {
+            Some(from_date_time) => archives
+                .into_iter()
+                .filter(|archive| {
+                    let data_arr = archive.split('/').collect::<Vec<&str>>();
+                    let month_str = *data_arr.get(data_arr.len() - 1).unwrap_or(&"");
+                    let year_str = *data_arr.get(data_arr.len() - 2).unwrap_or(&"");
+                    let archive_month = month_str.parse::<u64>().unwrap_or(0);
+                    let archive_year = year_str.parse::<u64>().unwrap_or(0);
+                    archive_month >= from_date_time.month() as u64
+                        && archive_year >= from_date_time.year() as u64
+                })
+                .collect(),
+            None => archives,
+        }
     }
 }
 
@@ -152,9 +149,9 @@ impl Into<NewGame> for ChessComGameResponse {
     fn into(self) -> NewGame {
         NewGame::new(
             self.white.username,
-            self.white.rating as i8,
+            self.white.rating as i16,
             self.black.username,
-            self.black.rating as i8,
+            self.black.rating as i16,
             (self.white.result.to_lowercase() == "win")
                 .then_some(Color::White)
                 .or_else(|| (self.black.result.to_lowercase() == "win").then_some(Color::Black)),
@@ -186,7 +183,15 @@ impl PlatformApiClient for ChessComClient {
             archives_response.archives
         };
 
-        let new_games = self.fetch_games_by_archives(archives).await;
+        let new_games = self
+            .fetch_games_by_archives(archives)
+            .await
+            .map(|new_games| {
+                new_games
+                    .into_iter()
+                    .filter(|game| *game.finished_at() > from_timestamp.unwrap_or(0))
+                    .collect::<Vec<NewGame>>()
+            });
 
         new_games
     }
@@ -212,7 +217,8 @@ mod tests {
             .and_hms_opt(0, 0, 0)
             .unwrap()
             .and_utc()
-            .timestamp_millis() as u64;
+            .timestamp_millis() as u64
+            / 1000;
 
         let filtered = client.filter_archives_by_timestamp(archives, from_timestamp);
 

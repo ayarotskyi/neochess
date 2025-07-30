@@ -1,4 +1,3 @@
-use chrono::{Duration, Utc};
 use juniper::{FieldResult, graphql_object, graphql_value};
 
 use crate::{
@@ -17,40 +16,24 @@ impl Mutation {
         username: String,
         platform_name: GraphQLPlatformName,
     ) -> FieldResult<i32> {
-        let latest_game_timestamp = ctx
+        let latest_game_timestamp_seconds = ctx
             .game_service
-            .get_latest_game_timestamp(platform_name.clone().into(), username.clone())
+            .get_latest_game_timestamp_seconds(platform_name.clone().into(), username.clone())
             .await?;
 
-        let result = match latest_game_timestamp {
-            Some(timestamp) => {
-                // if the latest game was one day ago or more, refetch games
-                if Duration::milliseconds(timestamp as i64 - Utc::now().timestamp_millis())
-                    > Duration::days(1)
-                {
-                    ctx.game_service
-                        .store_games(
-                            ctx.platform_service
-                                .fetch_games(username, Some(timestamp), platform_name.into())
-                                .await?,
-                        )
-                        .await?
-                        .len()
-                } else {
-                    0
-                }
-            }
-            // if user has no games, fetch from the platform
-            _ => ctx
-                .game_service
-                .store_games(
-                    ctx.platform_service
-                        .fetch_games(username, None, platform_name.into())
-                        .await?,
-                )
-                .await?
-                .len(),
-        };
+        let result = ctx
+            .game_service
+            .store_games(
+                ctx.platform_service
+                    .fetch_games(
+                        username,
+                        latest_game_timestamp_seconds,
+                        platform_name.into(),
+                    )
+                    .await?,
+            )
+            .await?
+            .len();
 
         Ok(result as i32)
     }

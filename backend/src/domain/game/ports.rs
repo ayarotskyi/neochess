@@ -13,7 +13,7 @@ use crate::domain::{
 pub trait GameRepository: Send + Sync + 'static {
     async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, GameRepositoryError>;
 
-    async fn get_latest_game_timestamp(
+    async fn get_latest_game_timestamp_seconds(
         &self,
         platform_name: PlatformName,
         username: String,
@@ -24,8 +24,8 @@ pub trait GameRepository: Send + Sync + 'static {
         position_fen: String,
         username: String,
         platform_name: PlatformName,
-        from_timestamp: Option<i32>,
-        to_timestamp: Option<i32>,
+        from_timestamp_seconds: Option<i32>,
+        to_timestamp_seconds: Option<i32>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError>;
 }
 
@@ -33,7 +33,7 @@ pub trait GameRepository: Send + Sync + 'static {
 pub trait GameService: Send + Sync + 'static {
     async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, GameRepositoryError>;
 
-    async fn get_latest_game_timestamp(
+    async fn get_latest_game_timestamp_seconds(
         &self,
         platform_name: PlatformName,
         username: String,
@@ -44,7 +44,7 @@ pub trait GameService: Send + Sync + 'static {
         position_fen: String,
         username: String,
         platform_name: PlatformName,
-        from_timestamp: Option<i32>,
-        to_timestamp: Option<i32>,
+        from_timestamp_seconds: Option<i32>,
+        to_timestamp_seconds: Option<i32>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError>;
 }

@@ -41,14 +41,14 @@ where
         return result;
     }
 
-    async fn get_latest_game_timestamp(
+    async fn get_latest_game_timestamp_seconds(
         &self,
         platform_name: PlatformName,
         username: String,
     ) -> Result<Option<u64>, super::models::game::GameRepositoryError> {
         let result = self
             .repo
-            .get_latest_game_timestamp(platform_name, username)
+            .get_latest_game_timestamp_seconds(platform_name, username)
             .await;
 
         let _ = result
@@ -63,8 +63,8 @@ where
         position_fen: String,
         username: String,
         platform_name: PlatformName,
-        from_timestamp: Option<i32>,
-        to_timestamp: Option<i32>,
+        from_timestamp_seconds: Option<i32>,
+        to_timestamp_seconds: Option<i32>,
     ) -> Result<Vec<super::models::position::MoveStat>, super::models::game::GameRepositoryError>
     {
         let result = self
@@ -73,8 +73,8 @@ where
                 position_fen,
                 username,
                 platform_name,
-                from_timestamp,
-                to_timestamp,
+                from_timestamp_seconds,
+                to_timestamp_seconds,
             )
             .await;
 

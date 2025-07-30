@@ -37,9 +37,9 @@ impl From<GameDto> for Game {
         Self::new(
             value.id,
             value.white,
-            value.white_elo as i8,
+            value.white_elo as i16,
             value.black,
-            value.black_elo as i8,
+            value.black_elo as i16,
             match value.winner {
                 Some(value) => Color::from_str(&value).ok(),
                 None => None,
@@ -76,7 +76,7 @@ impl From<NewGame> for NewGameDto {
             platform_name: <&PlatformName as Into<&'static str>>::into(value.platform_name())
                 .to_string(),
             pgn: value.pgn().to_string(),
-            finished_at: match Utc.timestamp_millis_opt(*value.finished_at() as i64) {
+            finished_at: match Utc.timestamp_millis_opt((*value.finished_at() * 1000) as i64) {
                 MappedLocalTime::Single(dt) => dt,
                 MappedLocalTime::Ambiguous(dt, _) => dt,
                 MappedLocalTime::None => {

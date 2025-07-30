@@ -58,7 +58,7 @@ impl From<Game> for GraphQLGame {
                 .finished_at()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or(Duration::new(0, 0))
-                .as_millis() as i32,
+                .as_secs() as i32,
         }
     }
 }

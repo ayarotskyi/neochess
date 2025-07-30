@@ -18,10 +18,10 @@ pub struct Game {
     id: uuid::Uuid,
     /// username of the player with white
     white: String,
-    white_elo: i8,
+    white_elo: i16,
     /// username of the player with black
     black: String,
-    black_elo: i8,
+    black_elo: i16,
     winner: Option<Color>,
     /// platform name where the game was played
     platform_name: PlatformName,
@@ -33,9 +33,9 @@ impl Game {
     pub fn new(
         id: uuid::Uuid,
         white: String,
-        white_elo: i8,
+        white_elo: i16,
         black: String,
-        black_elo: i8,
+        black_elo: i16,
         winner: Option<Color>,
         platform_name: PlatformName,
         pgn: Pgn,
@@ -62,7 +62,7 @@ impl Game {
         &self.white
     }
 
-    pub fn white_elo(&self) -> &i8 {
+    pub fn white_elo(&self) -> &i16 {
         &self.white_elo
     }
 
@@ -70,7 +70,7 @@ impl Game {
         &self.black
     }
 
-    pub fn black_elo(&self) -> &i8 {
+    pub fn black_elo(&self) -> &i16 {
         &self.black_elo
     }
 
@@ -94,21 +94,22 @@ impl Game {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewGame {
     white: String,
-    white_elo: i8,
+    white_elo: i16,
     black: String,
-    black_elo: i8,
+    black_elo: i16,
     winner: Option<Color>,
     platform_name: PlatformName,
     pgn: String,
+    // timestamp in seconds
     finished_at: u64,
 }
 
 impl NewGame {
     pub fn new(
         white: String,
-        white_elo: i8,
+        white_elo: i16,
         black: String,
-        black_elo: i8,
+        black_elo: i16,
         winner: Option<Color>,
         platform_name: PlatformName,
         pgn: String,
@@ -130,7 +131,7 @@ impl NewGame {
         &self.white
     }
 
-    pub fn white_elo(&self) -> &i8 {
+    pub fn white_elo(&self) -> &i16 {
         &self.white_elo
     }
 
@@ -138,7 +139,7 @@ impl NewGame {
         &self.black
     }
 
-    pub fn black_elo(&self) -> &i8 {
+    pub fn black_elo(&self) -> &i16 {
         &self.black_elo
     }
 

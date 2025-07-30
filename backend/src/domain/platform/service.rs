@@ -29,7 +29,7 @@ impl PlatformService for Service {
     async fn fetch_games(
         &self,
         user_name: String,
-        from_timestamp: Option<u64>,
+        from_timestamp_seconds: Option<u64>,
         platform_name: PlatformName,
     ) -> Result<Vec<NewGame>, PlatformError> {
         let client = self
@@ -39,6 +39,6 @@ impl PlatformService for Service {
                 Into::<&'static str>::into(platform_name).to_string(),
             ))?;
 
-        client.fetch_games(user_name, from_timestamp).await
+        client.fetch_games(user_name, from_timestamp_seconds).await
     }
 }

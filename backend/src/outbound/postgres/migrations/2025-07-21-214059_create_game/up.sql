@@ -7,5 +7,6 @@ CREATE TABLE game (
     winner CHAR(5),
     platform_name VARCHAR NOT NULL,
     pgn VARCHAR NOT NULL,
-    finished_at TIMESTAMP WITH TIME ZONE NOT NULL
+    finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    UNIQUE (white, black, finished_at, platform_name)
 );

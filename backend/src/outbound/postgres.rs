@@ -97,13 +97,14 @@ impl Postgres {
                     let game_ids: Vec<uuid::Uuid> = insert_into(game::table)
                         .values(&NewGameDto::from(new_game))
                         .returning(game::id)
+                        .on_conflict_do_nothing()
                         .get_results(conn)?;
 
                     if game_ids.len() == 0 {
-                        return Err(PostgresError::Unknown(anyhow!("no game is stored")));
+                        continue;
                     }
 
-                    let game_id = game_ids[0];
+                    let game_id = unsafe { *game_ids.get_unchecked(0) };
 
                     insert_into(game_position::table)
                         .values(
@@ -135,7 +136,7 @@ impl Postgres {
         result
     }
 
-    pub async fn latest_game_timestamp_by_username(
+    pub async fn latest_game_timestamp_seconds_by_username(
         &self,
         platform_name: String,
         username: String,
@@ -167,8 +168,8 @@ impl Postgres {
         username: String,
         play_as: Color,
         platform_name: PlatformName,
-        from_timestamp: Option<i32>,
-        to_timestamp: Option<i32>,
+        from_timestamp_seconds: Option<i32>,
+        to_timestamp_seconds: Option<i32>,
     ) -> Result<Vec<MoveStat>, PostgresError> {
         let pool = self.pool.clone();
 
@@ -201,42 +202,27 @@ impl Postgres {
                 query = query.filter(game::columns::black.eq(username));
             }
 
-            if let Some(from) = from_timestamp {
+            if let Some(from_seconds) = from_timestamp_seconds {
                 query = query.filter(
                     game::columns::finished_at.ge(chrono::DateTime::<chrono::Utc>::from_timestamp(
-                        from as i64,
+                        from_seconds as i64,
                         0,
                     )
                     .unwrap_or(DateTime::UNIX_EPOCH)),
                 );
             }
 
-            if let Some(to) = to_timestamp {
+            if let Some(to_seconds) = to_timestamp_seconds {
                 query = query.filter(
                     game::columns::finished_at.le(chrono::DateTime::<chrono::Utc>::from_timestamp(
-                        to as i64, 0,
+                        to_seconds as i64,
+                        0,
                     )
                     .unwrap_or(Utc::now())),
                 );
             }
 
             Ok(Vec::new())
-
-            // let result: Vec<(String, i8, String, i8, i16, String)> = query.load(&mut conn)?;
-
-            // Ok(result
-            //     .into_iter()
-            //     .map(|(id, white, white_elo, black, black_elo, move_idx, fen)| {
-            //         MoveStat::new(
-            //             white,
-            //             white_elo,
-            //             black,
-            //             black_elo,
-            //             move_idx as usize,
-            //             fen,
-            //         )
-            //     })
-            //     .collect())
         })
         .await?
     }
@@ -274,19 +260,19 @@ impl GameRepository for Postgres {
         Ok(self.save_games(games).await?)
     }
 
-    async fn get_latest_game_timestamp(
+    async fn get_latest_game_timestamp_seconds(
         &self,
         platform_name: PlatformName,
         username: String,
     ) -> Result<Option<u64>, GameRepositoryError> {
         let timestamp = self
-            .latest_game_timestamp_by_username(
+            .latest_game_timestamp_seconds_by_username(
                 Into::<&'static str>::into(platform_name).to_string(),
                 username,
             )
             .await?;
 
-        Ok(timestamp.map(|ts| ts.timestamp_millis() as u64))
+        Ok(timestamp.map(|ts| (ts.timestamp_millis() / 1000) as u64))
     }
 
     async fn get_move_stats(
@@ -294,8 +280,8 @@ impl GameRepository for Postgres {
         position_fen: String,
         username: String,
         platform_name: PlatformName,
-        from_timestamp: Option<i32>,
-        to_timestamp: Option<i32>,
+        from_timestamp_seconds: Option<i32>,
+        to_timestamp_seconds: Option<i32>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError> {
         Ok(self
             .query_move_stats(
@@ -303,8 +289,8 @@ impl GameRepository for Postgres {
                 username,
                 Color::White, // Assuming the color is White for this example
                 platform_name,
-                from_timestamp,
-                to_timestamp,
+                from_timestamp_seconds,
+                to_timestamp_seconds,
             )
             .await?)
     }
