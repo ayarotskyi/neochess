@@ -5,7 +5,7 @@ pub mod outbound;
 use crate::{
     domain::{game, platform},
     inbound::http::{HttpServer, HttpServerConfig},
-    outbound::postgres::Postgres,
+    outbound::{fen_validator, postgres::Postgres},
 };
 use std::{env, net::SocketAddr, str::FromStr};
 
@@ -22,7 +22,8 @@ async fn main() -> anyhow::Result<()> {
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let postgres = Postgres::new(database_url);
-    let game_service = game::service::Service::new(postgres);
+    let fen_validator = fen_validator::Validator;
+    let game_service = game::service::Service::new(postgres, fen_validator);
     let platform_service = platform::service::Service::new();
 
     let server = HttpServer::new(server_config, game_service, platform_service).unwrap();

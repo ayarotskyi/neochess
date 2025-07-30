@@ -1,8 +1,5 @@
 use std::{str::FromStr, time::SystemTime};
 
-use chrono::{MappedLocalTime, TimeZone, Utc};
-use diesel::prelude::*;
-
 use crate::{
     domain::{
         game::models::{
@@ -16,6 +13,10 @@ use crate::{
         game_position, position,
     },
 };
+use chrono::{MappedLocalTime, TimeZone, Utc};
+use diesel::pg::Pg;
+use diesel::prelude::*;
+use diesel::row::NamedRow;
 
 /// DTO for game model
 #[derive(Queryable, Identifiable, Debug)]
@@ -117,4 +118,24 @@ pub struct GamePositionDto {
     pub position_id: uuid::Uuid,
     pub move_idx: i16,
     pub next_move_san: Option<String>,
+}
+
+pub struct MoveStatDto {
+    pub next_move_san: String,
+    pub total: i64,
+    pub wins: i64,
+    pub draws: i64,
+    pub avg_opponent_elo: i32,
+}
+
+impl QueryableByName<Pg> for MoveStatDto {
+    fn build<'a>(row: &impl diesel::row::NamedRow<'a, Pg>) -> diesel::deserialize::Result<Self> {
+        Ok(Self {
+            next_move_san: NamedRow::get::<diesel::sql_types::Text, _>(row, "next_move_san")?,
+            total: NamedRow::get(row, "total")?,
+            wins: NamedRow::get(row, "wins")?,
+            draws: NamedRow::get(row, "draws")?,
+            avg_opponent_elo: NamedRow::get(row, "avg_opponent_elo")?,
+        })
+    }
 }

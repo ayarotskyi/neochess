@@ -22,7 +22,7 @@ pub struct Fen(String);
 #[error("parse fen error")]
 pub struct InvalidFenError;
 
-pub trait FenValidator {
+pub trait FenValidator: Send + Sync + 'static {
     fn is_valid_fen(&self, fen: &str) -> bool;
 }
 
@@ -48,25 +48,19 @@ impl Display for Fen {
 
 pub struct MoveStat {
     move_san: String,
-    move_rate: f64,
-    win_rate: f64,
-    draw_rate: f64,
-    avg_opponent_elo: i8,
+    total: u64,
+    wins: u64,
+    draws: u64,
+    avg_opponent_elo: u8,
 }
 
 impl MoveStat {
-    pub fn new(
-        move_san: String,
-        move_rate: f64,
-        win_rate: f64,
-        draw_rate: f64,
-        avg_opponent_elo: i8,
-    ) -> Self {
+    pub fn new(move_san: String, total: u64, wins: u64, draws: u64, avg_opponent_elo: u8) -> Self {
         Self {
             move_san,
-            move_rate,
-            win_rate,
-            draw_rate,
+            total,
+            wins,
+            draws,
             avg_opponent_elo,
         }
     }
@@ -75,19 +69,19 @@ impl MoveStat {
         &self.move_san
     }
 
-    pub fn move_rate(&self) -> &f64 {
-        &self.move_rate
+    pub fn total(&self) -> &u64 {
+        &self.total
     }
 
-    pub fn win_rate(&self) -> &f64 {
-        &self.win_rate
+    pub fn wins(&self) -> &u64 {
+        &self.wins
     }
 
-    pub fn draw_rate(&self) -> &f64 {
-        &self.draw_rate
+    pub fn draws(&self) -> &u64 {
+        &self.draws
     }
 
-    pub fn avg_opponent_elo(&self) -> &i8 {
+    pub fn avg_opponent_elo(&self) -> &u8 {
         &self.avg_opponent_elo
     }
 }

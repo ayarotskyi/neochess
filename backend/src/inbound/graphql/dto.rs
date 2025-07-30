@@ -4,7 +4,10 @@ use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
 use crate::domain::{
-    game::models::game::{Color, Game},
+    game::models::{
+        game::{Color, Game},
+        position::MoveStat,
+    },
     platform::models::PlatformName,
 };
 
@@ -90,7 +93,20 @@ impl From<Color> for GraphQLColor {
 #[derive(GraphQLObject, Clone)]
 pub struct GraphQLMoveStat {
     pub move_san: String,
-    pub play_rate: f64,
-    pub win_rate: f64,
-    pub draw_rate: f64,
+    pub total: i32,
+    pub wins: i32,
+    pub draws: i32,
+    pub avg_opponent_elo: i32,
+}
+
+impl From<MoveStat> for GraphQLMoveStat {
+    fn from(value: MoveStat) -> Self {
+        GraphQLMoveStat {
+            move_san: value.move_san().to_string(),
+            total: *value.total() as i32,
+            wins: *value.wins() as i32,
+            draws: *value.draws() as i32,
+            avg_opponent_elo: *value.avg_opponent_elo() as i32,
+        }
+    }
 }

@@ -3,8 +3,8 @@ use uuid::Uuid;
 
 use crate::domain::{
     game::models::{
-        game::{GameRepositoryError, NewGame},
-        position::MoveStat,
+        game::{Color, GameRepositoryError, NewGame},
+        position::{Fen, InvalidFenError, MoveStat},
     },
     platform::models::PlatformName,
 };
@@ -21,11 +21,12 @@ pub trait GameRepository: Send + Sync + 'static {
 
     async fn get_move_stats(
         &self,
-        position_fen: String,
+        position_fen: Fen,
         username: String,
+        play_as: Color,
         platform_name: PlatformName,
-        from_timestamp_seconds: Option<i32>,
-        to_timestamp_seconds: Option<i32>,
+        from_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+        to_timestamp: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError>;
 }
 
@@ -41,10 +42,13 @@ pub trait GameService: Send + Sync + 'static {
 
     async fn get_move_stats(
         &self,
-        position_fen: String,
+        position_fen: Fen,
         username: String,
+        play_as: Color,
         platform_name: PlatformName,
-        from_timestamp_seconds: Option<i32>,
-        to_timestamp_seconds: Option<i32>,
+        from_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+        to_timestamp: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError>;
+
+    fn parse_fen(&self, fen_str: String) -> Result<Fen, InvalidFenError>;
 }

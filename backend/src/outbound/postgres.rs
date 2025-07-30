@@ -5,11 +5,11 @@ use std::io;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use diesel::{
     dsl::insert_into,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
+    sql_query,
     upsert::excluded,
 };
 use pgn_reader::Reader;
@@ -22,7 +22,7 @@ use crate::{
         game::{
             models::{
                 game::{Color, GameRepositoryError, InvalidPgnError, NewGame},
-                position::MoveStat,
+                position::{Fen, MoveStat},
             },
             ports::GameRepository,
         },
@@ -30,7 +30,7 @@ use crate::{
     },
     outbound::{
         position_visitor::PositionVisitor,
-        postgres::dto::{GamePositionDto, NewGameDto, NewPositionDto},
+        postgres::dto::{GamePositionDto, MoveStatDto, NewGameDto, NewPositionDto},
     },
 };
 
@@ -94,17 +94,20 @@ impl Postgres {
                         )));
                     }
 
-                    let game_ids: Vec<uuid::Uuid> = insert_into(game::table)
+                    let game_result: Option<uuid::Uuid> = insert_into(game::table)
                         .values(&NewGameDto::from(new_game))
                         .returning(game::id)
                         .on_conflict_do_nothing()
-                        .get_results(conn)?;
+                        .get_result(conn)
+                        .optional()?;
 
-                    if game_ids.len() == 0 {
-                        continue;
-                    }
-
-                    let game_id = unsafe { *game_ids.get_unchecked(0) };
+                    let game_id = match game_result {
+                        Some(id) => id,
+                        None => {
+                            // If the game already exists, we skip inserting positions
+                            continue;
+                        }
+                    };
 
                     insert_into(game_position::table)
                         .values(
@@ -164,65 +167,70 @@ impl Postgres {
 
     pub async fn query_move_stats(
         &self,
-        position_fen: String,
+        position_fen: Fen,
         username: String,
         play_as: Color,
         platform_name: PlatformName,
-        from_timestamp_seconds: Option<i32>,
-        to_timestamp_seconds: Option<i32>,
+        from_timestamp_seconds: Option<chrono::DateTime<chrono::Utc>>,
+        to_timestamp_seconds: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<MoveStat>, PostgresError> {
         let pool = self.pool.clone();
 
         task::spawn_blocking(move || {
             use schema::game;
-            use schema::game_position;
-            use schema::position;
 
             let mut conn = pool.get()?;
 
-            let mut query = game::dsl::game
-                .inner_join(
-                    game_position::dsl::game_position
-                        .on(game::columns::id.eq(game_position::columns::game_id)),
-                )
-                .inner_join(
-                    position::dsl::position
-                        .on(game_position::columns::position_id.eq(position::columns::id)),
-                )
-                .filter(
-                    game::columns::platform_name
-                        .eq(Into::<&'static str>::into(platform_name).to_string()),
-                )
-                .filter(position::columns::fen.eq(position_fen))
-                .into_boxed();
+            let query_str = format!(
+                "SELECT game_position.next_move_san,
+                    COUNT(*) total,
+                    SUM(case when game.winner = $1 then 1 else 0 end) wins,
+                    SUM(case when game.winner is NULL then 1 else 0 end) draws,
+                    AVG({})::INT avg_opponent_elo
+                FROM game_position
+                    JOIN position ON position.id = game_position.position_id
+                    JOIN game ON game.id = game_position.game_id
+                WHERE game.platform_name = $2
+                    AND position.fen = $3
+                    AND {} = $4
+                GROUP BY game_position.next_move_san",
+                match play_as {
+                    Color::White => game::black_elo::NAME,
+                    Color::Black => game::white_elo::NAME,
+                },
+                match play_as {
+                    Color::White => game::white::NAME,
+                    Color::Black => game::black::NAME,
+                }
+            );
 
-            if play_as == Color::White {
-                query = query.filter(game::columns::white.eq(username));
-            } else {
-                query = query.filter(game::columns::black.eq(username));
-            }
+            let query_result: Vec<MoveStatDto> = sql_query(query_str)
+                .bind::<diesel::sql_types::Text, _>(Into::<&'static str>::into(play_as))
+                .bind::<diesel::sql_types::Text, _>(Into::<&'static str>::into(platform_name))
+                .bind::<diesel::sql_types::Text, _>(position_fen.to_string())
+                .bind::<diesel::sql_types::Text, _>(username)
+                // .bind::<diesel::sql_types::Nullable<diesel::sql_types::Integer>, _>(
+                //     from_timestamp_seconds,
+                // )
+                // .bind::<diesel::sql_types::Nullable<diesel::sql_types::Integer>, _>(
+                //     to_timestamp_seconds,
+                // )
+                .get_results(&mut conn)?;
 
-            if let Some(from_seconds) = from_timestamp_seconds {
-                query = query.filter(
-                    game::columns::finished_at.ge(chrono::DateTime::<chrono::Utc>::from_timestamp(
-                        from_seconds as i64,
-                        0,
+            let move_stats = query_result
+                .into_iter()
+                .map(|move_stat_dto| {
+                    MoveStat::new(
+                        move_stat_dto.next_move_san,
+                        move_stat_dto.total as u64,
+                        move_stat_dto.wins as u64,
+                        move_stat_dto.draws as u64,
+                        move_stat_dto.avg_opponent_elo as u8,
                     )
-                    .unwrap_or(DateTime::UNIX_EPOCH)),
-                );
-            }
+                })
+                .collect::<_>();
 
-            if let Some(to_seconds) = to_timestamp_seconds {
-                query = query.filter(
-                    game::columns::finished_at.le(chrono::DateTime::<chrono::Utc>::from_timestamp(
-                        to_seconds as i64,
-                        0,
-                    )
-                    .unwrap_or(Utc::now())),
-                );
-            }
-
-            Ok(Vec::new())
+            Ok(move_stats)
         })
         .await?
     }
@@ -277,20 +285,21 @@ impl GameRepository for Postgres {
 
     async fn get_move_stats(
         &self,
-        position_fen: String,
+        position_fen: Fen,
         username: String,
+        play_as: Color,
         platform_name: PlatformName,
-        from_timestamp_seconds: Option<i32>,
-        to_timestamp_seconds: Option<i32>,
+        from_timestamp: Option<chrono::DateTime<chrono::Utc>>,
+        to_timestamp: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError> {
         Ok(self
             .query_move_stats(
                 position_fen,
                 username,
-                Color::White, // Assuming the color is White for this example
+                play_as,
                 platform_name,
-                from_timestamp_seconds,
-                to_timestamp_seconds,
+                from_timestamp,
+                to_timestamp,
             )
             .await?)
     }
