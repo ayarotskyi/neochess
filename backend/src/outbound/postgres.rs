@@ -40,15 +40,12 @@ pub struct Postgres {
 }
 
 impl Postgres {
-    pub fn new(database_url: String) -> Self {
+    pub fn new(database_url: String) -> anyhow::Result<Self> {
         let manager = ConnectionManager::<PgConnection>::new(database_url);
 
-        Self {
-            pool: Pool::builder()
-                .test_on_check_out(true)
-                .build(manager)
-                .expect("Could not build connection pool"),
-        }
+        Ok(Self {
+            pool: Pool::builder().test_on_check_out(true).build(manager)?,
+        })
     }
 
     pub async fn save_games(&self, new_games: Vec<NewGame>) -> Result<Vec<Uuid>, PostgresError> {

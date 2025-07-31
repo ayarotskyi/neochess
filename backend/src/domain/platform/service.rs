@@ -6,20 +6,14 @@ use crate::domain::{
     },
 };
 
-type PlatformApiClientMap = std::collections::HashMap<PlatformName, Box<dyn PlatformApiClient>>;
+pub type PlatformApiClientMap = std::collections::HashMap<PlatformName, Box<dyn PlatformApiClient>>;
 
 pub struct Service {
     client_map: PlatformApiClientMap,
 }
 
 impl Service {
-    pub fn new() -> Self {
-        let mut client_map = PlatformApiClientMap::new();
-        client_map.insert(
-            PlatformName::ChessCom,
-            Box::new(crate::outbound::platforms::chesscom::ChessComClient::new()),
-        );
-
+    pub fn new(client_map: PlatformApiClientMap) -> Self {
         Self { client_map }
     }
 }
