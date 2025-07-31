@@ -11,6 +11,7 @@ const Root = (props: StackProps) => {
       px="10%"
       py={5}
       overflow="hidden"
+      background="linear-gradient(135deg, rgba(88, 28, 135, 0.5) 15%, #000000 50%, rgba(22, 78, 99, 0.5) 85%)"
       {...props}
     >
       <PositionAnalyzer flex={5} />

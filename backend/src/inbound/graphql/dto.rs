@@ -67,6 +67,7 @@ impl From<Game> for GraphQLGame {
 }
 
 #[derive(GraphQLEnum, Clone)]
+#[graphql(name = "Color")]
 pub enum GraphQLColor {
     White,
     Black,

@@ -32,6 +32,12 @@ const config = defineConfig({
   theme: {
     textStyles,
   },
+  globalCss: {
+    html: {
+      backgroundColor: 'black',
+      overflow: 'hidden',
+    },
+  },
 });
 
 const system = createSystem(defaultConfig, config);
