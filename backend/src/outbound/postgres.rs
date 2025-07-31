@@ -193,6 +193,8 @@ impl Postgres {
                 WHERE game.platform_name = $2
                     AND position.fen = $3
                     AND {} = $4
+                    AND ($5 is NULL OR game.finished_at >= $5)
+                    AND ($6 is NULL OR game.finished_at <= $6)
                 GROUP BY game_position.next_move_san",
                 match play_as {
                     Color::White => game::black_elo::NAME,
@@ -209,12 +211,12 @@ impl Postgres {
                 .bind::<diesel::sql_types::Text, _>(Into::<&'static str>::into(platform_name))
                 .bind::<diesel::sql_types::Text, _>(position_fen.to_string())
                 .bind::<diesel::sql_types::Text, _>(username)
-                // .bind::<diesel::sql_types::Nullable<diesel::sql_types::Integer>, _>(
-                //     from_timestamp_seconds,
-                // )
-                // .bind::<diesel::sql_types::Nullable<diesel::sql_types::Integer>, _>(
-                //     to_timestamp_seconds,
-                // )
+                .bind::<diesel::sql_types::Nullable<diesel::sql_types::Timestamptz>, _>(
+                    from_timestamp_seconds,
+                )
+                .bind::<diesel::sql_types::Nullable<diesel::sql_types::Timestamptz>, _>(
+                    to_timestamp_seconds,
+                )
                 .get_results(&mut conn)?;
 
             let move_stats = query_result
@@ -225,7 +227,7 @@ impl Postgres {
                         move_stat_dto.total as u64,
                         move_stat_dto.wins as u64,
                         move_stat_dto.draws as u64,
-                        move_stat_dto.avg_opponent_elo as u8,
+                        move_stat_dto.avg_opponent_elo as u16,
                     )
                 })
                 .collect::<_>();

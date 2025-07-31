@@ -51,11 +51,11 @@ pub struct MoveStat {
     total: u64,
     wins: u64,
     draws: u64,
-    avg_opponent_elo: u8,
+    avg_opponent_elo: u16,
 }
 
 impl MoveStat {
-    pub fn new(move_san: String, total: u64, wins: u64, draws: u64, avg_opponent_elo: u8) -> Self {
+    pub fn new(move_san: String, total: u64, wins: u64, draws: u64, avg_opponent_elo: u16) -> Self {
         Self {
             move_san,
             total,
@@ -81,7 +81,7 @@ impl MoveStat {
         &self.draws
     }
 
-    pub fn avg_opponent_elo(&self) -> &u8 {
+    pub fn avg_opponent_elo(&self) -> &u16 {
         &self.avg_opponent_elo
     }
 }
