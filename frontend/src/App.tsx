@@ -5,6 +5,7 @@ import { ApolloProvider } from '@apollo/client';
 import client from './apolloClient';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import Identification from './pages/Identification';
+import { Toaster } from './components/ui/toaster';
 
 const router = createBrowserRouter([
   {
@@ -12,7 +13,7 @@ const router = createBrowserRouter([
     Component: Identification,
   },
   {
-    path: '/:platform/:username',
+    path: '/:platformName/:username',
     Component: Main,
   },
   {
@@ -32,6 +33,7 @@ const App = () => {
         >
           <RouterProvider router={router} />
         </Stack>
+        <Toaster />
       </ApolloProvider>
     </ChakraProvider>
   );

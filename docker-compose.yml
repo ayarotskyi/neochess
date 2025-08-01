@@ -16,7 +16,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      HOST: ${HOST}
+      HOST: ${BACKEND_HOST}
       PORT: ${BACKEND_PORT}
       DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
     develop:
@@ -51,7 +51,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      PUBLIC_API_URL: "http://${HOST}:${BACKEND_PORT}"
+      PUBLIC_API_URL: "http://localhost:${BACKEND_PORT}"
     develop:
       watch:
         - action: sync

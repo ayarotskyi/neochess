@@ -1,9 +1,34 @@
 import { HStack, type StackProps } from '@chakra-ui/react';
-import Statistic from '../components/Statistic';
-import PositionAnalyzer from '../components/PositionAnalyzer';
+import Statistic from '../components/Main/Statistic';
+import PositionAnalyzer from '../components/Main/PositionAnalyzer';
+import { Navigate, useParams } from 'react-router';
+import { useCallback, useState } from 'react';
+import GameLoader from '@/components/Main/GameLoader';
+import { PLATFORM_URLS } from '@/constants';
+import type { PlatformName } from '@/__generated__/graphql';
 
-const Root = (props: StackProps) => {
-  return (
+const Main = (props: StackProps) => {
+  const { username, platformName: platformNameString } = useParams();
+
+  const platformName = Object.keys(PLATFORM_URLS).find(
+    (key) => platformNameString === PLATFORM_URLS[key as PlatformName],
+  ) as PlatformName | undefined;
+
+  const [isDataLoaded, setDataLoaded] = useState(false);
+
+  const onDataLoaded = useCallback(() => {
+    setDataLoaded(true);
+  }, []);
+
+  return !username || !platformName ? (
+    <Navigate to="/" replace />
+  ) : !isDataLoaded ? (
+    <GameLoader
+      onDataLoaded={onDataLoaded}
+      username={username}
+      platformName={platformName}
+    />
+  ) : (
     <HStack
       align="stretch"
       flex={1}
@@ -20,4 +45,4 @@ const Root = (props: StackProps) => {
   );
 };
 
-export default Root;
+export default Main;

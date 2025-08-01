@@ -1,4 +1,5 @@
 import { PlatformName } from '@/__generated__/graphql';
+import { PLATFORM_COLORS, PLATFORM_DISPLAY_NAMES } from '@/constants';
 import { Flex, HStack, Text, VStack, type StackProps } from '@chakra-ui/react';
 import { memo, useCallback } from 'react';
 
@@ -7,14 +8,6 @@ type Props = {
   isSelected: boolean;
   selectPlatform: (platformName: PlatformName) => void;
 } & StackProps;
-
-const PLATFORM_COLORS: Record<PlatformName, string> = {
-  [PlatformName.ChessCom]: '#22c55e',
-};
-
-export const PLATFORM_DISPLAY_NAMES: Record<PlatformName, string> = {
-  [PlatformName.ChessCom]: 'Chess.com',
-};
 
 const PlatformButton = ({
   platformName,

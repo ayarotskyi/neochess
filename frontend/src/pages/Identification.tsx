@@ -1,15 +1,11 @@
 import { PlatformName } from '@/__generated__/graphql';
-import PlatformButton, {
-  PLATFORM_DISPLAY_NAMES,
-} from '@/components/Identification/PlatformButton';
+import PlatformButton from '@/components/Identification/PlatformButton';
+import LogoTitle from '@/components/LogoTitle';
+import { PLATFORM_DISPLAY_NAMES, PLATFORM_URLS } from '@/constants';
 import TextInput from '@/ui/TextInput';
-import { Button, Flex, Stack, Text, VStack } from '@chakra-ui/react';
+import { Button, Stack, Text, VStack } from '@chakra-ui/react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-
-const PLATFORM_URLS: Record<PlatformName, string> = {
-  [PlatformName.ChessCom]: 'chesscom',
-};
 
 const Identification = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformName>();
@@ -39,7 +35,8 @@ const Identification = () => {
   );
 
   return (
-    <Flex flex={1} align="center" justify="center">
+    <VStack flex={1} spaceY="2rem" align="center" justify="center">
+      <LogoTitle />
       <Stack
         p="1.5rem"
         border="1px rgb(6 182 212 / 0.5) solid"
@@ -91,7 +88,7 @@ const Identification = () => {
           Connect account
         </Button>
       </Stack>
-    </Flex>
+    </VStack>
   );
 };
 
