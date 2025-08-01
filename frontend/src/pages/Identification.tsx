@@ -1,10 +1,29 @@
 import { PlatformName } from '@/__generated__/graphql';
-import PlatformButton from '@/components/Identification/PlatformButton';
-import { Flex, Stack, Text, VStack } from '@chakra-ui/react';
-import { useMemo, useState } from 'react';
+import PlatformButton, {
+  PLATFORM_DISPLAY_NAMES,
+} from '@/components/Identification/PlatformButton';
+import TextInput from '@/ui/TextInput';
+import { Button, Flex, Stack, Text, VStack } from '@chakra-ui/react';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
+
+const PLATFORM_URLS: Record<PlatformName, string> = {
+  [PlatformName.ChessCom]: 'chesscom',
+};
 
 const Identification = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformName>();
+  const [username, setUsername] = useState<string>();
+
+  const navigate = useNavigate();
+
+  const submit = useCallback(() => {
+    if (!selectedPlatform || !username) {
+      return;
+    }
+
+    navigate(`/${PLATFORM_URLS[selectedPlatform]}/${username}`);
+  }, [navigate, selectedPlatform, username]);
 
   const Platforms = useMemo(
     () =>
@@ -29,11 +48,11 @@ const Identification = () => {
         bg="rgb(17 24 39 / 0.5)"
         width="450px"
         align="stretch"
+        spaceY="1.5rem"
       >
         <Text
           textStyle="sectionHeading"
           color="rgb(34 211 238)"
-          pb="1.5rem"
           textAlign="center"
         >
           Select platform
@@ -41,6 +60,36 @@ const Identification = () => {
         <VStack spaceY="0.75rem" align="stretch">
           {Platforms}
         </VStack>
+        {!!selectedPlatform && (
+          <TextInput
+            label="username"
+            placeholder={`Enter your ${PLATFORM_DISPLAY_NAMES[selectedPlatform]} username`}
+            onChange={(event) => setUsername(event.target.value)}
+          />
+        )}
+        <Button
+          py="0.75rem"
+          borderRadius="0.5rem"
+          borderWidth="1px"
+          textStyle="mono"
+          fontWeight={700}
+          fontSize="100%"
+          color="white"
+          backgroundImage="linear-gradient(to right, #06b6d4 , #a855f7)"
+          boxShadow="0 0 20px rgba(0,255,255,0.4)"
+          _hover={{
+            backgroundImage: 'linear-gradient(to right, #00b8db , #ad46ff)',
+            boxShadow: '0 0 20px rgba(0,255,255,0.6)',
+          }}
+          border="none"
+          textTransform="uppercase"
+          lineHeight="1.5rem"
+          h="fit-content"
+          disabled={!selectedPlatform || !username}
+          onClick={submit}
+        >
+          Connect account
+        </Button>
       </Stack>
     </Flex>
   );

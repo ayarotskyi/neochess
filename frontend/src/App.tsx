@@ -12,12 +12,12 @@ const router = createBrowserRouter([
     Component: Identification,
   },
   {
-    path: '/:platform',
-    element: <Navigate to="/" replace />,
-  },
-  {
     path: '/:platform/:username',
     Component: Main,
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
   },
 ]);
 

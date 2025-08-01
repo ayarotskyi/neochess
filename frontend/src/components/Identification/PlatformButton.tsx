@@ -12,7 +12,7 @@ const PLATFORM_COLORS: Record<PlatformName, string> = {
   [PlatformName.ChessCom]: '#22c55e',
 };
 
-const PLATFORM_DISPLAY_NAMES: Record<PlatformName, string> = {
+export const PLATFORM_DISPLAY_NAMES: Record<PlatformName, string> = {
   [PlatformName.ChessCom]: 'Chess.com',
 };
 
