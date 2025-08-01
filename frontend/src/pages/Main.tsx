@@ -1,6 +1,6 @@
 import { HStack, type StackProps } from '@chakra-ui/react';
-import Statistic from './Statistic';
-import PositionAnalyzer from './PositionAnalyzer';
+import Statistic from '../components/Statistic';
+import PositionAnalyzer from '../components/PositionAnalyzer';
 
 const Root = (props: StackProps) => {
   return (
@@ -11,7 +11,7 @@ const Root = (props: StackProps) => {
       px="10%"
       py={5}
       overflow="hidden"
-      background="linear-gradient(135deg, rgba(88, 28, 135, 0.5) 15%, #000000 50%, rgba(22, 78, 99, 0.5) 85%)"
+      maxH="100%"
       {...props}
     >
       <PositionAnalyzer flex={5} />
