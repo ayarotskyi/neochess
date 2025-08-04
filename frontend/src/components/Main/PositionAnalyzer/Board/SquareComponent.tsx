@@ -4,6 +4,7 @@ import { PieceComponents } from '@/common';
 import { Flex, Text, type StackProps } from '@chakra-ui/react';
 import {
   Chess,
+  isNormal,
   makeSquare,
   type Color,
   type Piece,
@@ -24,7 +25,10 @@ const SquareComponent = ({ square, ...props }: Props) => {
   const unselectSquare = useGameStore((state) => state.unselectSquare);
   const piece = useGameStore(
     useShallow((state) => {
-      if (state.promotingMove?.from === square) {
+      if (
+        state.promotingMove &&
+        (!isNormal(state.promotingMove) || state.promotingMove.from === square)
+      ) {
         return undefined;
       }
       if (state.promotingMove?.to === square) {
@@ -35,8 +39,11 @@ const SquareComponent = ({ square, ...props }: Props) => {
         return piece;
       }
 
-      const board = Chess.fromSetup(parseFen(state.fen).unwrap()).unwrap()
-        .board;
+      const board = Chess.fromSetup(
+        parseFen(
+          state.fenStack[state.fenStack.length - 1 - state.backtrackStep],
+        ).unwrap(),
+      ).unwrap().board;
 
       return board.get(square);
     }),

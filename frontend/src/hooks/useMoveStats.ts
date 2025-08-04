@@ -38,7 +38,8 @@ const GET_MOVE_STATS = gql(`
 const useMoveStats = () => {
   const { positionFen, playAs } = useGameStore(
     useShallow((state) => ({
-      positionFen: state.fen,
+      positionFen:
+        state.fenStack[state.fenStack.length - 1 - state.backtrackStep],
       playAs: state.playAs,
     })),
   );

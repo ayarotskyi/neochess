@@ -23,7 +23,9 @@ const MoveStatistics = ({ statIndex, ...props }: Props) => {
   const stat = useAnalyzerStore(
     useShallow((state) => state.moveStatistics![statIndex]),
   );
-  const fen = useGameStore((state) => state.fen);
+  const fen = useGameStore(
+    (state) => state.fenStack[state.fenStack.length - 1 - state.backtrackStep],
+  );
   const hovered = stat.hovered;
   const color = statToColor(stat);
   const san = useMemo(

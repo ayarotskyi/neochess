@@ -18,7 +18,8 @@ export enum MoveResult {
 }
 
 export type GameStoreType = {
-  fen: string;
+  fenStack: string[];
+  backtrackStep: number;
   playAs: Color;
   selectedSquare: Square | null;
   promotingMove: Move | null;
@@ -28,10 +29,13 @@ export type GameStoreType = {
   resolvePromotion: (role: Role | null) => void;
   resetBoard: () => void;
   changeSide: () => void;
+  prevPosition: () => void;
+  nextPosition: () => void;
 };
 
 export const useGameStore = create<GameStoreType>((set, get) => ({
-  fen: fen.INITIAL_FEN,
+  fenStack: [fen.INITIAL_FEN],
+  backtrackStep: 0,
   playAs: 'white' as Color,
   selectedSquare: null,
   promotingMove: null,
@@ -42,7 +46,13 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
 
     const state = get();
 
-    const game = Chess.fromSetup(fen.parseFen(state.fen).unwrap()).unwrap();
+    const game = Chess.fromSetup(
+      fen
+        .parseFen(
+          state.fenStack[state.fenStack.length - 1 - state.backtrackStep],
+        )
+        .unwrap(),
+    ).unwrap();
 
     if (
       game.board.pawn.has(move.from) &&
@@ -75,7 +85,11 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
     setup.epSquare = game.epSquare;
 
     set({
-      fen: fen.makeFen(setup),
+      fenStack: [
+        ...state.fenStack.slice(0, state.fenStack.length - state.backtrackStep),
+        fen.makeFen(setup),
+      ],
+      backtrackStep: 0,
     });
 
     return MoveResult.Success;
@@ -110,12 +124,26 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
   },
   resetBoard: () => {
     set({
-      fen: fen.INITIAL_FEN,
+      fenStack: [fen.INITIAL_FEN],
+      backtrackStep: 0,
     });
   },
   changeSide: () => {
     set((state) => ({
       playAs: state.playAs === 'white' ? 'black' : 'white',
+    }));
+  },
+  nextPosition: () => {
+    set((state) => ({
+      backtrackStep: state.backtrackStep <= 0 ? 0 : state.backtrackStep - 1,
+    }));
+  },
+  prevPosition: () => {
+    set((state) => ({
+      backtrackStep:
+        state.backtrackStep >= state.fenStack.length - 1
+          ? state.fenStack.length - 1
+          : state.backtrackStep + 1,
     }));
   },
 }));
