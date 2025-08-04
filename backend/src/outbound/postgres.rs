@@ -21,8 +21,11 @@ use crate::{
     domain::{
         game::{
             models::{
-                game::{Color, GameRepositoryError, InvalidPgnError, NewGame},
-                position::{Fen, MoveStat},
+                errors::{GameRepositoryError, InvalidPgnError},
+                fen::Fen,
+                game::Color,
+                move_stat::MoveStat,
+                new_game::NewGame,
             },
             ports::GameRepository,
         },

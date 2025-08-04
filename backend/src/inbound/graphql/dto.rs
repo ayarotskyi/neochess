@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::domain::{
     game::models::{
         game::{Color, Game},
-        position::MoveStat,
+        move_stat::MoveStat,
     },
     platform::models::PlatformName,
 };

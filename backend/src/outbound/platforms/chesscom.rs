@@ -2,7 +2,8 @@ use anyhow::anyhow;
 use chrono::Datelike;
 
 use crate::domain::{
-    game::models::game::{Color, NewGame},
+    game::models::game::Color,
+    game::models::new_game::NewGame,
     platform::{
         models::{PlatformError, PlatformName},
         ports::PlatformApiClient,

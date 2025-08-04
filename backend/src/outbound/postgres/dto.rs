@@ -3,8 +3,11 @@ use std::{str::FromStr, time::SystemTime};
 use crate::{
     domain::{
         game::models::{
-            game::{Color, Game, NewGame, Pgn},
-            position::{Fen, Position},
+            fen::Fen,
+            game::{Color, Game},
+            new_game::NewGame,
+            pgn::Pgn,
+            position::Position,
         },
         platform::models::PlatformName,
     },

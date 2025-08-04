@@ -3,8 +3,11 @@ use uuid::Uuid;
 
 use crate::domain::{
     game::models::{
-        game::{Color, GameRepositoryError, NewGame},
-        position::{Fen, InvalidFenError, MoveStat},
+        errors::{GameRepositoryError, InvalidFenError},
+        fen::Fen,
+        game::Color,
+        move_stat::MoveStat,
+        new_game::NewGame,
     },
     platform::models::PlatformName,
 };

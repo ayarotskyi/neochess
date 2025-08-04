@@ -1,7 +1,7 @@
 use juniper::{FieldResult, graphql_object, graphql_value};
 
 use crate::{
-    domain::{game::models::game::GameRepositoryError, platform::models::PlatformError},
+    domain::{game::models::errors::GameRepositoryError, platform::models::PlatformError},
     inbound::graphql::{GraphQLContext, dto::GraphQLPlatformName},
 };
 

@@ -2,7 +2,7 @@ use pgn_reader::{SanPlus, Skip, Visitor};
 use shakmaty::{Chess, Position as _, uci::UciMove};
 use std::ops::ControlFlow;
 
-use crate::domain::game::models::{game::InvalidPgnError, position::Fen};
+use crate::domain::game::models::{errors::InvalidPgnError, fen::Fen};
 
 pub struct PositionVisitor {
     pgn: String,

@@ -4,8 +4,11 @@ use uuid::Uuid;
 use crate::domain::{
     game::{
         models::{
+            errors::{GameRepositoryError, InvalidFenError},
+            fen::{Fen, FenValidator},
             game::Color,
-            position::{Fen, FenValidator, InvalidFenError},
+            move_stat::MoveStat,
+            new_game::NewGame,
         },
         ports::{GameRepository, GameService},
     },
@@ -41,10 +44,7 @@ where
     R: GameRepository,
     V: FenValidator,
 {
-    async fn store_games(
-        &self,
-        games: Vec<super::models::game::NewGame>,
-    ) -> Result<Vec<Uuid>, super::models::game::GameRepositoryError> {
+    async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, GameRepositoryError> {
         let result = self.repo.store_games(games).await;
 
         let _ = result
@@ -58,7 +58,7 @@ where
         &self,
         platform_name: PlatformName,
         username: String,
-    ) -> Result<Option<u64>, super::models::game::GameRepositoryError> {
+    ) -> Result<Option<u64>, GameRepositoryError> {
         let result = self
             .repo
             .get_latest_game_timestamp_seconds(platform_name, username)
@@ -79,8 +79,7 @@ where
         platform_name: PlatformName,
         from_timestamp_seconds: Option<chrono::DateTime<chrono::Utc>>,
         to_timestamp_seconds: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> Result<Vec<super::models::position::MoveStat>, super::models::game::GameRepositoryError>
-    {
+    ) -> Result<Vec<MoveStat>, GameRepositoryError> {
         let result = self
             .repo
             .get_move_stats(

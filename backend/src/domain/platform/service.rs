@@ -1,5 +1,5 @@
 use crate::domain::{
-    game::models::game::NewGame,
+    game::models::new_game::NewGame,
     platform::{
         models::{PlatformError, PlatformName},
         ports::{PlatformApiClient, PlatformService},

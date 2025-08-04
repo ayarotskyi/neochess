@@ -3,8 +3,8 @@ use juniper::{FieldResult, graphql_object};
 
 use crate::{
     domain::game::models::{
-        game::GameRepositoryError,
-        position::{InvalidFenError, MoveStat},
+        errors::{GameRepositoryError, InvalidFenError},
+        move_stat::MoveStat,
     },
     inbound::graphql::{
         GraphQLContext,

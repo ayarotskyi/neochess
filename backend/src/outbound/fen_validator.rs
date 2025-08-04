@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::domain::game::models::position::FenValidator;
+use crate::domain::game::models::fen::FenValidator;
 
 pub struct Validator;
 
