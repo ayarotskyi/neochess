@@ -20,7 +20,7 @@ diesel::table! {
         game_id -> Uuid,
         position_id -> Uuid,
         move_idx -> Int2,
-        next_move_san -> Nullable<Text>,
+        next_move_uci -> Nullable<Text>,
     }
 }
 

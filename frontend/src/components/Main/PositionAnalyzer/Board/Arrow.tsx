@@ -10,7 +10,7 @@ type Props = SVGProps<SVGSVGElement> & { statIndex: number };
 const Arrow = ({ statIndex, ...props }: Props) => {
   const playAs = useGameStore((state) => state.playAs);
   const stat = useAnalyzerStore(
-    useShallow((state) => state.moveStatistics[statIndex]),
+    useShallow((state) => state.moveStatistics![statIndex]),
   );
   const move = stat.move;
   const hovered = stat.hovered;

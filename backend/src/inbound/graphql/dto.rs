@@ -93,7 +93,7 @@ impl From<Color> for GraphQLColor {
 
 #[derive(GraphQLObject, Clone)]
 pub struct GraphQLMoveStat {
-    pub move_san: String,
+    pub move_uci: String,
     pub total: i32,
     pub wins: i32,
     pub draws: i32,
@@ -103,7 +103,7 @@ pub struct GraphQLMoveStat {
 impl From<MoveStat> for GraphQLMoveStat {
     fn from(value: MoveStat) -> Self {
         GraphQLMoveStat {
-            move_san: value.move_san().to_string(),
+            move_uci: value.move_uci().to_string(),
             total: *value.total() as i32,
             wins: *value.wins() as i32,
             draws: *value.draws() as i32,

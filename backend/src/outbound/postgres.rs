@@ -115,8 +115,8 @@ impl Postgres {
                                     game_id: game_id,
                                     position_id: position_id,
                                     move_idx: index as i16,
-                                    next_move_san: position_metadata_vec.get(index).and_then(
-                                        |metadata| metadata.next_move_san.map(|s| s.to_string()),
+                                    next_move_uci: position_metadata_vec.get(index).and_then(
+                                        |metadata| metadata.next_move_uci.map(|s| s.to_string()),
                                     ),
                                 })
                                 .collect::<Vec<GamePositionDto>>(),
@@ -179,7 +179,7 @@ impl Postgres {
             let mut conn = pool.get()?;
 
             let query_str = format!(
-                "SELECT game_position.next_move_san,
+                "SELECT game_position.next_move_uci,
                     COUNT(*) total,
                     SUM(case when game.winner = $1 then 1 else 0 end) wins,
                     SUM(case when game.winner is NULL then 1 else 0 end) draws,
@@ -189,10 +189,11 @@ impl Postgres {
                     JOIN game ON game.id = game_position.game_id
                 WHERE game.platform_name = $2
                     AND position.fen = $3
+                    AND game_position.next_move_uci IS NOT NULL
                     AND {} = $4
                     AND ($5 is NULL OR game.finished_at >= $5)
                     AND ($6 is NULL OR game.finished_at <= $6)
-                GROUP BY game_position.next_move_san",
+                GROUP BY game_position.next_move_uci",
                 match play_as {
                     Color::White => game::black_elo::NAME,
                     Color::Black => game::white_elo::NAME,
@@ -220,7 +221,7 @@ impl Postgres {
                 .into_iter()
                 .map(|move_stat_dto| {
                     MoveStat::new(
-                        move_stat_dto.next_move_san,
+                        move_stat_dto.next_move_uci,
                         move_stat_dto.total as u64,
                         move_stat_dto.wins as u64,
                         move_stat_dto.draws as u64,

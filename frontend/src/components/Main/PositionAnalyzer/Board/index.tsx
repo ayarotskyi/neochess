@@ -8,7 +8,7 @@ import Arrow from './Arrow';
 
 const Arrows = () => {
   const statisticsLength = useAnalyzerStore(
-    (state) => state.moveStatistics.length,
+    (state) => state.moveStatistics?.length ?? 0,
   );
 
   return new Array(statisticsLength).fill(null).map((_, statIndex) => {

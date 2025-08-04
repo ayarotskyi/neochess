@@ -47,7 +47,7 @@ impl Display for Fen {
 }
 
 pub struct MoveStat {
-    move_san: String,
+    move_uci: String,
     total: u64,
     wins: u64,
     draws: u64,
@@ -55,9 +55,9 @@ pub struct MoveStat {
 }
 
 impl MoveStat {
-    pub fn new(move_san: String, total: u64, wins: u64, draws: u64, avg_opponent_elo: u16) -> Self {
+    pub fn new(move_uci: String, total: u64, wins: u64, draws: u64, avg_opponent_elo: u16) -> Self {
         Self {
-            move_san,
+            move_uci,
             total,
             wins,
             draws,
@@ -65,8 +65,8 @@ impl MoveStat {
         }
     }
 
-    pub fn move_san(&self) -> &str {
-        &self.move_san
+    pub fn move_uci(&self) -> &str {
+        &self.move_uci
     }
 
     pub fn total(&self) -> &u64 {

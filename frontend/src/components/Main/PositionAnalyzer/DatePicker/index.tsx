@@ -51,7 +51,7 @@ const DatePicker = (props: Props) => {
             lineHeight="16px"
             color="#67E8F9"
           >
-            {`${new DateObject(new Date(fromUnix * 1000)).format('MMM D, YYYY')} - ${new DateObject(new Date(toUnix * 1000)).format('MMM D, YYYY')}`}
+            {`${fromUnix ? new DateObject(new Date(fromUnix * 1000)).format('MMM D, YYYY') : '...'} - ${toUnix ? new DateObject(new Date(toUnix * 1000)).format('MMM D, YYYY') : '...'}`}
           </Text>
         </Button>
       </Popover.Trigger>

@@ -71,10 +71,14 @@ const CalendarComponent = ({ onClose, ...props }: Props) => {
   const [values, setValues] = useState(
     (() => {
       const state = useAnalyzerStore.getState();
-      return [
-        new DateObject(state.timeRange.fromUnix * 1000),
-        new DateObject(state.timeRange.toUnix * 1000),
-      ];
+      const result = [];
+      if (state.timeRange.fromUnix) {
+        result.push(new DateObject(state.timeRange.fromUnix * 1000));
+        if (state.timeRange.toUnix) {
+          new DateObject(state.timeRange.toUnix * 1000);
+        }
+      }
+      return result;
     })(),
   );
 

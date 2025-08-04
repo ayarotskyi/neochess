@@ -1,12 +1,14 @@
 import {
   Chess,
   fen,
+  isNormal,
   SquareSet,
   type Color,
-  type NormalMove,
+  type Move,
   type Role,
   type Square,
 } from 'chessops';
+
 import { create } from 'zustand';
 
 export enum MoveResult {
@@ -19,8 +21,8 @@ export type GameStoreType = {
   fen: string;
   playAs: Color;
   selectedSquare: Square | null;
-  promotingMove: NormalMove | null;
-  play: (move: NormalMove) => MoveResult;
+  promotingMove: Move | null;
+  play: (move: Move) => MoveResult;
   selectSquare: (square: Square) => void;
   unselectSquare: () => void;
   resolvePromotion: (role: Role | null) => void;
@@ -34,7 +36,7 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
   selectedSquare: null,
   promotingMove: null,
   play: (move) => {
-    if (move.from === move.to) {
+    if (!isNormal(move) || move.from === move.to) {
       return MoveResult.Illegal;
     }
 
@@ -68,8 +70,12 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
       return MoveResult.Illegal;
     }
 
+    const setup = game.toSetup();
+    // set ep square bc the generated fen will be incorrect otherwise
+    setup.epSquare = game.epSquare;
+
     set({
-      fen: fen.makeFen(game.toSetup()),
+      fen: fen.makeFen(setup),
     });
 
     return MoveResult.Success;
@@ -108,10 +114,8 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
     });
   },
   changeSide: () => {
-    const side = get().playAs;
-
-    set({
-      playAs: side === 'white' ? 'black' : 'white',
-    });
+    set((state) => ({
+      playAs: state.playAs === 'white' ? 'black' : 'white',
+    }));
   },
 }));

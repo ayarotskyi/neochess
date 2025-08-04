@@ -2,10 +2,11 @@ import { HStack, type StackProps } from '@chakra-ui/react';
 import Statistic from '../components/Main/Statistic';
 import PositionAnalyzer from '../components/Main/PositionAnalyzer';
 import { Navigate, useParams } from 'react-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import GameLoader from '@/components/Main/GameLoader';
 import { PLATFORM_URLS } from '@/constants';
 import type { PlatformName } from '@/__generated__/graphql';
+import ParamsContext from '@/contexts/ParamsContext';
 
 const Main = (props: StackProps) => {
   const { username, platformName: platformNameString } = useParams();
@@ -20,28 +21,39 @@ const Main = (props: StackProps) => {
     setDataLoaded(true);
   }, []);
 
-  return !username || !platformName ? (
+  const paramsContextValue = useMemo(
+    () =>
+      !username || !platformName
+        ? null
+        : {
+            username: username,
+            platformName: platformName,
+          },
+    [platformName, username],
+  );
+
+  return paramsContextValue === null ? (
     <Navigate to="/" replace />
-  ) : !isDataLoaded ? (
-    <GameLoader
-      onDataLoaded={onDataLoaded}
-      username={username}
-      platformName={platformName}
-    />
   ) : (
-    <HStack
-      align="stretch"
-      flex={1}
-      spaceX="48px"
-      px="10%"
-      py={5}
-      overflow="hidden"
-      maxH="100%"
-      {...props}
-    >
-      <PositionAnalyzer flex={5} />
-      <Statistic flex={2} />
-    </HStack>
+    <ParamsContext value={paramsContextValue}>
+      {!isDataLoaded ? (
+        <GameLoader onDataLoaded={onDataLoaded} />
+      ) : (
+        <HStack
+          align="stretch"
+          flex={1}
+          spaceX="48px"
+          px="10%"
+          py={5}
+          overflow="hidden"
+          maxH="100%"
+          {...props}
+        >
+          <PositionAnalyzer flex={5} />
+          <Statistic flex={2} />
+        </HStack>
+      )}
+    </ParamsContext>
   );
 };
 

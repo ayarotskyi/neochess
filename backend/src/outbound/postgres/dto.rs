@@ -117,11 +117,11 @@ pub struct GamePositionDto {
     pub game_id: uuid::Uuid,
     pub position_id: uuid::Uuid,
     pub move_idx: i16,
-    pub next_move_san: Option<String>,
+    pub next_move_uci: Option<String>,
 }
 
 pub struct MoveStatDto {
-    pub next_move_san: String,
+    pub next_move_uci: String,
     pub total: i64,
     pub wins: i64,
     pub draws: i64,
@@ -131,7 +131,7 @@ pub struct MoveStatDto {
 impl QueryableByName<Pg> for MoveStatDto {
     fn build<'a>(row: &impl diesel::row::NamedRow<'a, Pg>) -> diesel::deserialize::Result<Self> {
         Ok(Self {
-            next_move_san: NamedRow::get::<diesel::sql_types::Text, _>(row, "next_move_san")?,
+            next_move_uci: NamedRow::get::<diesel::sql_types::Text, _>(row, "next_move_uci")?,
             total: NamedRow::get(row, "total")?,
             wins: NamedRow::get(row, "wins")?,
             draws: NamedRow::get(row, "draws")?,

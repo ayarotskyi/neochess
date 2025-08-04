@@ -9,8 +9,10 @@ import {
   VStack,
   type StackProps,
 } from '@chakra-ui/react';
-import { makeUci } from 'chessops';
-import { useCallback } from 'react';
+import { Chess } from 'chessops';
+import { parseFen } from 'chessops/fen';
+import { makeSan } from 'chessops/san';
+import { useCallback, useMemo } from 'react';
 import { useShallow } from 'zustand/shallow';
 
 type Props = StackProps & {
@@ -19,11 +21,15 @@ type Props = StackProps & {
 
 const MoveStatistics = ({ statIndex, ...props }: Props) => {
   const stat = useAnalyzerStore(
-    useShallow((state) => state.moveStatistics[statIndex]),
+    useShallow((state) => state.moveStatistics![statIndex]),
   );
+  const fen = useGameStore((state) => state.fen);
   const hovered = stat.hovered;
   const color = statToColor(stat);
-  const uci = makeUci(stat.move);
+  const san = useMemo(
+    () => makeSan(Chess.fromSetup(parseFen(fen).unwrap()).unwrap(), stat.move),
+    [fen, stat.move],
+  );
 
   const setHoveredByIndex = useAnalyzerStore((state) => state.setHovered);
   const setHovered = useCallback(
@@ -48,6 +54,7 @@ const MoveStatistics = ({ statIndex, ...props }: Props) => {
       padding="13px"
       spaceY="8px"
       align="stretch"
+      userSelect="none"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
@@ -62,7 +69,7 @@ const MoveStatistics = ({ statIndex, ...props }: Props) => {
           lineHeight="24px"
           color="#FFFFFF"
         >
-          {uci}
+          {san}
         </Text>
         <Circle size="12px" bg={color} boxShadow={`0px 0px 10px ${color}`} />
       </HStack>
@@ -81,7 +88,7 @@ const MoveStatistics = ({ statIndex, ...props }: Props) => {
             lineHeight="16px"
             color="#67E8F9"
           >
-            {Math.round(stat.playRate * 100)}% played
+            {(stat.playRate * 100).toFixed(1)}% played
           </Text>
         </Box>
         <Box
@@ -98,7 +105,7 @@ const MoveStatistics = ({ statIndex, ...props }: Props) => {
             lineHeight="16px"
             color="#86EFAC"
           >
-            {Math.round(stat.winRate * 100)}% win
+            {(stat.winRate * 100).toFixed(1)}% win
           </Text>
         </Box>
       </HStack>

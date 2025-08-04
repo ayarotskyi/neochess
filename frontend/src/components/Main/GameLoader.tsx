@@ -8,15 +8,13 @@ import {
 import LogoTitle from '../LogoTitle';
 import { useMutation } from '@apollo/client';
 import { gql } from '@/__generated__';
-import type { PlatformName } from '@/__generated__/graphql';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { PLATFORM_DISPLAY_NAMES } from '@/constants';
 import { toaster } from '../ui/toaster';
+import ParamsContext from '@/contexts/ParamsContext';
 
 type Props = StackProps & {
-  username: string;
-  platformName: PlatformName;
   onDataLoaded: () => void;
 };
 
@@ -26,12 +24,9 @@ const UPDATE_USER_GAMES = gql(`
   }
 `);
 
-const GameLoader = ({
-  username,
-  platformName,
-  onDataLoaded,
-  ...props
-}: Props) => {
+const GameLoader = ({ onDataLoaded, ...props }: Props) => {
+  const { username, platformName } = useContext(ParamsContext);
+
   const [mutate] = useMutation(UPDATE_USER_GAMES, {
     variables: {
       username,

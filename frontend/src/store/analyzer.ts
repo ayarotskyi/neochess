@@ -1,9 +1,9 @@
-import type { NormalMove } from 'chessops';
+import type { Move } from 'chessops';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 export type MoveStat = {
-  move: NormalMove;
+  move: Move;
   playRate: number;
   winRate: number;
   hovered: boolean;
@@ -11,51 +11,47 @@ export type MoveStat = {
 
 export type AnalyzerStoreType = {
   timeRange: {
-    fromUnix: number;
-    toUnix: number;
+    fromUnix?: number;
+    toUnix?: number;
   };
-  moveStatistics: MoveStat[];
+  moveStatistics?: MoveStat[];
   setTimeRange: (timeRange: AnalyzerStoreType['timeRange']) => void;
   setHovered: (statIndex: number, hovered: boolean) => void;
+  updateStats: (stats: Omit<MoveStat, 'hovered'>[] | null) => void;
 };
 
 export const useAnalyzerStore = create<AnalyzerStoreType>()(
   immer((set) => ({
     timeRange: {
-      fromUnix: Math.floor(new Date().getTime() / 1000),
-      toUnix: Math.floor(new Date().getTime() / 1000),
+      fromUnix: undefined,
+      toUnix: undefined,
     },
-    moveStatistics: [
-      {
-        move: { from: 12, to: 28 },
-        playRate: 0.8,
-        winRate: 0.52,
-        hovered: false,
-      },
-      {
-        move: { from: 12, to: 20 },
-        playRate: 0.1,
-        winRate: 0.37,
-        hovered: false,
-      },
-      {
-        move: { from: 17, to: 6 },
-        playRate: 0.1,
-        winRate: 0.5,
-        hovered: false,
-      },
-    ],
+    moveStatistics: undefined,
     setTimeRange: (timeRange) =>
       set({
         timeRange,
       }),
     setHovered: (statIndex, hovered) => {
       set((state) => {
-        if (statIndex < 0 || statIndex >= state.moveStatistics.length) {
+        if (
+          !state.moveStatistics ||
+          statIndex < 0 ||
+          statIndex >= state.moveStatistics.length
+        ) {
           return;
         }
 
         state.moveStatistics[statIndex].hovered = hovered;
+      });
+    },
+    updateStats: (stats) => {
+      set({
+        moveStatistics: !stats
+          ? undefined
+          : stats.map((stat) => ({
+              ...stat,
+              hovered: false,
+            })),
       });
     },
   })),

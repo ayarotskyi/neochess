@@ -4,7 +4,7 @@ import { useAnalyzerStore } from '@/store/analyzer';
 
 const PositionMoves = (props: StackProps) => {
   const moveStatisticsLength = useAnalyzerStore(
-    (state) => state.moveStatistics.length,
+    (state) => state.moveStatistics?.length ?? 0,
   );
   return (
     <Flex
