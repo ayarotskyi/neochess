@@ -1,6 +1,9 @@
+import { usePositionStore } from '@/store/position';
 import { HStack, Text, VStack, type StackProps } from '@chakra-ui/react';
 
 const PositionInfo = (props: StackProps) => {
+  const statistics = usePositionStore((state) => state.statistics);
+
   return (
     <VStack
       bg="rgba(17, 24, 39, 0.5)"
@@ -35,7 +38,7 @@ const PositionInfo = (props: StackProps) => {
             lineHeight="20px"
             color="#4ADE80"
           >
-            {1247}
+            {statistics?.totalGames ?? '...'}
           </Text>
         </HStack>
         <HStack>
@@ -57,7 +60,9 @@ const PositionInfo = (props: StackProps) => {
             lineHeight="20px"
             color="#4ADE80"
           >
-            {68.3}%
+            {statistics
+              ? `${((100 * statistics.wins) / statistics.totalGames).toFixed(1)}%`
+              : '...'}
           </Text>
         </HStack>
         <HStack>
@@ -79,7 +84,7 @@ const PositionInfo = (props: StackProps) => {
             lineHeight="20px"
             color="#22D3EE"
           >
-            {1856}
+            {statistics?.avgOpponentElo.toFixed(0) ?? '...'}
           </Text>
         </HStack>
         <HStack>

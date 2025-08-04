@@ -41,13 +41,13 @@ const PositionAnalyzer = (props: StackProps) => {
         <HStack justify="space-between">
           <HStack spaceX="1rem">
             <Button
-              bg="rgba(255, 255, 255, 0.002)"
-              border="1px solid #C084FC"
-              boxShadow="0px 0px 10px rgba(147, 51, 234, 0.5)"
-              borderRadius="6px"
+              bg="rgba(17, 24, 39, 0.5)"
+              border="1px solid rgba(6, 182, 212, 0.5)"
+              boxShadow="0px 0px 10px rgba(0, 255, 255, 0.2)"
               _hover={{
-                bg: 'rgba(147, 51, 234, 0.2)',
+                bg: 'rgba(31, 41, 55, 0.5)',
               }}
+              borderRadius="6px"
               onClick={reset}
             >
               <Text

@@ -4,6 +4,7 @@ import { toaster } from '@/components/ui/toaster';
 import ParamsContext from '@/contexts/ParamsContext';
 import { useAnalyzerStore } from '@/store/analyzer';
 import { useGameStore } from '@/store/game';
+import { usePositionStore, type PositionStore } from '@/store/position';
 import { useQuery } from '@apollo/client';
 import { parseUci } from 'chessops';
 import { useContext, useEffect } from 'react';
@@ -64,10 +65,14 @@ const useMoveStats = () => {
   });
 
   const updateStats = useAnalyzerStore((state) => state.updateStats);
+  const setPositionStatistics = usePositionStore(
+    (state) => state.setStatistics,
+  );
 
   useEffect(() => {
     if (loading) {
       updateStats(null);
+      setPositionStatistics(null);
       return;
     }
 
@@ -91,7 +96,28 @@ const useMoveStats = () => {
     stats?.sort((a, b) => b.playRate - a.playRate);
 
     updateStats(stats || null);
-  }, [data, error, loading, updateStats]);
+
+    setPositionStatistics(
+      data?.getMoveStats.length
+        ? data.getMoveStats.reduce(
+            (acc, value) => ({
+              totalGames: acc.totalGames + value.total,
+              wins: acc.wins + value.wins,
+              lastPlayedUnix: acc.lastPlayedUnix,
+              avgOpponentElo:
+                acc.avgOpponentElo +
+                (value.avgOpponentElo * value.total) / totalGames,
+            }),
+            {
+              totalGames: 0,
+              wins: 0,
+              avgOpponentElo: 0,
+              lastPlayedUnix: 0,
+            } as NonNullable<PositionStore['statistics']>,
+          )
+        : null,
+    );
+  }, [data, error, loading, setPositionStatistics, updateStats]);
 };
 
 export default useMoveStats;
