@@ -1,11 +1,12 @@
-import { Box, Flex, Text, VStack, type StackProps } from '@chakra-ui/react';
+import { Flex, Spinner, Text, VStack, type StackProps } from '@chakra-ui/react';
 import MoveStatistics from './MoveStatistics';
 import { useAnalyzerStore } from '@/store/analyzer';
 
 const PositionMoves = (props: StackProps) => {
   const moveStatisticsLength = useAnalyzerStore(
-    (state) => state.moveStatistics?.length ?? 0,
+    (state) => state.moveStatistics?.length,
   );
+
   return (
     <Flex
       bg="rgba(17, 24, 39, 0.5)"
@@ -24,12 +25,17 @@ const PositionMoves = (props: StackProps) => {
       <Text textStyle="sectionHeading" color="#C084FC">
         Move Statistics
       </Text>
-      <VStack spaceY="16px" align="stretch" flex={1}>
-        {new Array(moveStatisticsLength).fill(null).map((_, statIndex) => {
-          return <MoveStatistics statIndex={statIndex} key={statIndex} />;
-        })}
-      </VStack>
-      <Box flex={1}></Box>
+      {moveStatisticsLength === undefined ? (
+        <Flex flex={1} align="center" justify="center">
+          <Spinner size="xl" color="#22d3ee" />
+        </Flex>
+      ) : (
+        <VStack spaceY="16px" align="stretch" flex={1}>
+          {new Array(moveStatisticsLength).fill(null).map((_, statIndex) => {
+            return <MoveStatistics statIndex={statIndex} key={statIndex} />;
+          })}
+        </VStack>
+      )}
     </Flex>
   );
 };
