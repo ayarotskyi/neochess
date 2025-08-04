@@ -32,6 +32,7 @@ const GET_MOVE_STATS = gql(`
       wins
       total
       draws
+      lastPlayedAt
     }
   }
 `);
@@ -103,7 +104,7 @@ const useMoveStats = () => {
             (acc, value) => ({
               totalGames: acc.totalGames + value.total,
               wins: acc.wins + value.wins,
-              lastPlayedUnix: acc.lastPlayedUnix,
+              lastPlayedUnix: Math.max(acc.lastPlayedUnix, value.lastPlayedAt),
               avgOpponentElo:
                 acc.avgOpponentElo +
                 (value.avgOpponentElo * value.total) / totalGames,

@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use crate::domain::{game::models::game::Color, platform::models::PlatformName};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -9,8 +11,7 @@ pub struct NewGame {
     winner: Option<Color>,
     platform_name: PlatformName,
     pgn: String,
-    // timestamp in seconds
-    finished_at: u64,
+    finished_at: SystemTime,
 }
 
 impl NewGame {
@@ -22,7 +23,7 @@ impl NewGame {
         winner: Option<Color>,
         platform_name: PlatformName,
         pgn: String,
-        finished_at: u64,
+        finished_at: SystemTime,
     ) -> Self {
         Self {
             white: white,
@@ -64,7 +65,7 @@ impl NewGame {
         &self.pgn
     }
 
-    pub fn finished_at(&self) -> &u64 {
+    pub fn finished_at(&self) -> &SystemTime {
         &self.finished_at
     }
 }

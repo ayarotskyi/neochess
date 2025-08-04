@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 use anyhow::anyhow;
 use chrono::Datelike;
 
@@ -158,7 +160,9 @@ impl Into<NewGame> for ChessComGameResponse {
                 .or_else(|| (self.black.result.to_lowercase() == "win").then_some(Color::Black)),
             PlatformName::ChessCom,
             self.pgn,
-            self.end_time,
+            SystemTime::UNIX_EPOCH
+                .checked_add(Duration::from_secs(self.end_time))
+                .unwrap_or(SystemTime::UNIX_EPOCH),
         )
     }
 }
@@ -190,7 +194,13 @@ impl PlatformApiClient for ChessComClient {
             .map(|new_games| {
                 new_games
                     .into_iter()
-                    .filter(|game| *game.finished_at() > from_timestamp.unwrap_or(0))
+                    .filter(|game| {
+                        game.finished_at()
+                            .duration_since(SystemTime::UNIX_EPOCH)
+                            .unwrap_or(Duration::from_secs(0))
+                            .as_secs()
+                            > from_timestamp.unwrap_or(0)
+                    })
                     .collect::<Vec<NewGame>>()
             });
 

@@ -1,19 +1,30 @@
+use std::time::SystemTime;
+
 pub struct MoveStat {
     move_uci: String,
     total: u64,
     wins: u64,
     draws: u64,
     avg_opponent_elo: u16,
+    last_played_at: SystemTime,
 }
 
 impl MoveStat {
-    pub fn new(move_uci: String, total: u64, wins: u64, draws: u64, avg_opponent_elo: u16) -> Self {
+    pub fn new(
+        move_uci: String,
+        total: u64,
+        wins: u64,
+        draws: u64,
+        avg_opponent_elo: u16,
+        last_played_at: SystemTime,
+    ) -> Self {
         Self {
             move_uci,
             total,
             wins,
             draws,
             avg_opponent_elo,
+            last_played_at,
         }
     }
 
@@ -35,5 +46,9 @@ impl MoveStat {
 
     pub fn avg_opponent_elo(&self) -> &u16 {
         &self.avg_opponent_elo
+    }
+
+    pub fn last_played_at(&self) -> &SystemTime {
+        &self.last_played_at
     }
 }

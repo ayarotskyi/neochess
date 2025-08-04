@@ -186,7 +186,8 @@ impl Postgres {
                     COUNT(*) total,
                     SUM(case when game.winner = $1 then 1 else 0 end) wins,
                     SUM(case when game.winner is NULL then 1 else 0 end) draws,
-                    AVG({})::INT avg_opponent_elo
+                    AVG({})::INT avg_opponent_elo,
+                    MAX(game.finished_at) last_played_at
                 FROM game_position
                     JOIN position ON position.id = game_position.position_id
                     JOIN game ON game.id = game_position.game_id
@@ -222,15 +223,7 @@ impl Postgres {
 
             let move_stats = query_result
                 .into_iter()
-                .map(|move_stat_dto| {
-                    MoveStat::new(
-                        move_stat_dto.next_move_uci,
-                        move_stat_dto.total as u64,
-                        move_stat_dto.wins as u64,
-                        move_stat_dto.draws as u64,
-                        move_stat_dto.avg_opponent_elo as u16,
-                    )
-                })
+                .map(|move_stat_dto| move_stat_dto.into())
                 .collect::<_>();
 
             Ok(move_stats)

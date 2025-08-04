@@ -1,4 +1,4 @@
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
@@ -98,6 +98,7 @@ pub struct GraphQLMoveStat {
     pub wins: i32,
     pub draws: i32,
     pub avg_opponent_elo: i32,
+    pub last_played_at: i32,
 }
 
 impl From<MoveStat> for GraphQLMoveStat {
@@ -108,6 +109,11 @@ impl From<MoveStat> for GraphQLMoveStat {
             wins: *value.wins() as i32,
             draws: *value.draws() as i32,
             avg_opponent_elo: *value.avg_opponent_elo() as i32,
+            last_played_at: value
+                .last_played_at()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or(Duration::from_secs(0))
+                .as_secs() as i32,
         }
     }
 }

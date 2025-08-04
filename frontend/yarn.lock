@@ -1505,6 +1505,11 @@
   dependencies:
     tslib "^2.3.0"
 
+"@yaireo/relative-time@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/@yaireo/relative-time/-/relative-time-1.0.5.tgz#a582967021f0f18880491569e9fcb86f8364c4de"
+  integrity sha512-70+d5xRsX06cDVDn6WiV2qwWDSLrkLg8QsAQyeD+EiQeZga5EfwvvXrFcdDh2GI83QsnTJyHYxp58M1DMKurVQ==
+
 "@zag-js/accordion@1.17.4":
   version "1.17.4"
   resolved "https://registry.yarnpkg.com/@zag-js/accordion/-/accordion-1.17.4.tgz#3d376d456dd46f334a6b39aee201c387aec42244"

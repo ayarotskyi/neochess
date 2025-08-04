@@ -1,5 +1,6 @@
 import { usePositionStore } from '@/store/position';
 import { HStack, Text, VStack, type StackProps } from '@chakra-ui/react';
+import RelativeTime from '@yaireo/relative-time';
 
 const PositionInfo = (props: StackProps) => {
   const statistics = usePositionStore((state) => state.statistics);
@@ -107,7 +108,14 @@ const PositionInfo = (props: StackProps) => {
             color="#C084FC"
             textTransform="uppercase"
           >
-            2 days ago
+            {statistics
+              ? (() => {
+                  const relativeTime = new RelativeTime();
+                  return relativeTime.from(
+                    new Date(statistics.lastPlayedUnix * 1000),
+                  );
+                })()
+              : '...'}
           </Text>
         </HStack>
       </VStack>

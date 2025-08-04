@@ -1,10 +1,14 @@
-use std::{str::FromStr, time::SystemTime};
+use std::{
+    str::FromStr,
+    time::{Duration, SystemTime},
+};
 
 use crate::{
     domain::{
         game::models::{
             fen::Fen,
             game::{Color, Game},
+            move_stat::MoveStat,
             new_game::NewGame,
             pgn::Pgn,
             position::Position,
@@ -16,7 +20,7 @@ use crate::{
         game_position, position,
     },
 };
-use chrono::{MappedLocalTime, TimeZone, Utc};
+use chrono::DateTime;
 use diesel::pg::Pg;
 use diesel::prelude::*;
 use diesel::row::NamedRow;
@@ -64,7 +68,7 @@ pub struct NewGameDto {
     pub winner: Option<String>,
     pub platform_name: String,
     pub pgn: String,
-    finished_at: chrono::DateTime<chrono::Utc>,
+    pub finished_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl From<NewGame> for NewGameDto {
@@ -80,12 +84,21 @@ impl From<NewGame> for NewGameDto {
             platform_name: <&PlatformName as Into<&'static str>>::into(value.platform_name())
                 .to_string(),
             pgn: value.pgn().to_string(),
-            finished_at: match Utc.timestamp_millis_opt((*value.finished_at() * 1000) as i64) {
-                MappedLocalTime::Single(dt) => dt,
-                MappedLocalTime::Ambiguous(dt, _) => dt,
-                MappedLocalTime::None => {
-                    unreachable!("Invalid timestamp for finished_at: {}", value.finished_at())
-                }
+            finished_at: match DateTime::from_timestamp(
+                (match value.finished_at().duration_since(SystemTime::UNIX_EPOCH) {
+                    Ok(duration) => duration,
+                    Err(err) => {
+                        unreachable!("New game timestamp is earlier than unix epoch: {}", err)
+                    }
+                })
+                .as_secs() as i64,
+                0,
+            ) {
+                Some(time) => time,
+                None => unreachable!(
+                    "Invalid timestamp for finished_at: {:?}",
+                    value.finished_at()
+                ),
             },
         }
     }
@@ -129,6 +142,7 @@ pub struct MoveStatDto {
     pub wins: i64,
     pub draws: i64,
     pub avg_opponent_elo: i32,
+    pub last_played_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl QueryableByName<Pg> for MoveStatDto {
@@ -139,6 +153,25 @@ impl QueryableByName<Pg> for MoveStatDto {
             wins: NamedRow::get(row, "wins")?,
             draws: NamedRow::get(row, "draws")?,
             avg_opponent_elo: NamedRow::get(row, "avg_opponent_elo")?,
+            last_played_at: NamedRow::get(row, "last_played_at")?,
         })
+    }
+}
+
+impl Into<MoveStat> for MoveStatDto {
+    fn into(self) -> MoveStat {
+        MoveStat::new(
+            self.next_move_uci,
+            self.total as u64,
+            self.wins as u64,
+            self.draws as u64,
+            self.avg_opponent_elo as u16,
+            match SystemTime::UNIX_EPOCH.checked_add(Duration::from_millis(
+                self.last_played_at.timestamp_millis() as u64,
+            )) {
+                Some(time) => time,
+                None => unreachable!("Invalid last_played_at value: {}", self.last_played_at),
+            },
+        )
     }
 }

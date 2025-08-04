@@ -17,6 +17,7 @@
     "@emotion/react": "^11.14.0",
     "@fontsource-variable/geist": "^5.2.6",
     "@fontsource-variable/geist-mono": "^5.2.6",
+    "@yaireo/relative-time": "^1.0.5",
     "chessops": "^0.14.2",
     "graphql": "^16.11.0",
     "immer": "^10.1.1",
