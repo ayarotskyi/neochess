@@ -62,6 +62,7 @@ const Identification = () => {
             label="username"
             placeholder={`Enter your ${PLATFORM_DISPLAY_NAMES[selectedPlatform]} username`}
             onChange={(event) => setUsername(event.target.value)}
+            name="username"
           />
         )}
         <Button
