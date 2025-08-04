@@ -24,10 +24,12 @@ export type GameStoreType = {
   selectSquare: (square: Square) => void;
   unselectSquare: () => void;
   resolvePromotion: (role: Role | null) => void;
+  resetBoard: () => void;
+  changeSide: () => void;
 };
 
 export const useGameStore = create<GameStoreType>((set, get) => ({
-  fen: 'r2qkbnr/1Ppppppp/2n5/8/8/8/1PPPPPPP/RNBQKBNR w KQkq - 1 5',
+  fen: fen.INITIAL_FEN,
   playAs: 'white' as Color,
   selectedSquare: null,
   promotingMove: null,
@@ -99,5 +101,17 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
       });
       state.unselectSquare();
     }
+  },
+  resetBoard: () => {
+    set({
+      fen: fen.INITIAL_FEN,
+    });
+  },
+  changeSide: () => {
+    const side = get().playAs;
+
+    set({
+      playAs: side === 'white' ? 'black' : 'white',
+    });
   },
 }));
