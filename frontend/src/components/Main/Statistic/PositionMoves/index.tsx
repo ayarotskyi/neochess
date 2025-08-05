@@ -29,6 +29,12 @@ const PositionMoves = (props: StackProps) => {
         <Flex flex={1} align="center" justify="center">
           <Spinner size="xl" color="#22d3ee" />
         </Flex>
+      ) : moveStatisticsLength === 0 ? (
+        <Flex flex={1} align="center" justify="center">
+          <Text textStyle="default" textAlign="center" color="#6b6969">
+            No moves found.
+          </Text>
+        </Flex>
       ) : (
         <VStack spaceY="16px" align="stretch" flex={1}>
           {new Array(moveStatisticsLength).fill(null).map((_, statIndex) => {
