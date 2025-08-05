@@ -13,6 +13,8 @@ import { useGameStore } from '@/store/game';
 import SwapIcon from '@/icons/SwapIcon';
 import { Tooltip } from '@/components/ui/Tooltip';
 import LeftArrowIcon from '@/icons/LeftArrowIcon';
+import CrossIcon from '@/icons/CrossIcon';
+import { useAnalyzerStore } from '@/store/analyzer';
 
 const PositionAnalyzer = (props: StackProps) => {
   const reset = useGameStore((state) => state.resetBoard);
@@ -23,6 +25,10 @@ const PositionAnalyzer = (props: StackProps) => {
   );
   const nextPosition = useGameStore((state) => state.nextPosition);
   const nextDisabled = useGameStore((state) => state.backtrackStep === 0);
+  const resetTimeRange = useAnalyzerStore((state) => state.resetTimeRange);
+  const isTimeRangeSet = useAnalyzerStore(
+    (state) => !!state.timeRange.fromUnix && !!state.timeRange.toUnix,
+  );
   return (
     <Stack
       border="1px solid rgba(6, 182, 212, 0.5)"
@@ -116,7 +122,14 @@ const PositionAnalyzer = (props: StackProps) => {
               </Button>
             </Tooltip>
           </HStack>
-          <DatePicker />
+          <HStack>
+            {isTimeRangeSet && (
+              <Flex cursor="pointer" p="1rem" onClick={resetTimeRange}>
+                <CrossIcon width="1.2rem" height="1.2rem" color="#22d3ee" />
+              </Flex>
+            )}
+            <DatePicker />
+          </HStack>
         </HStack>
       </VStack>
       <Flex flex={1} justify="center" align="center" minH="0px" minW="500px">

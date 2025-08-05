@@ -18,6 +18,7 @@ export type AnalyzerStoreType = {
   setTimeRange: (timeRange: AnalyzerStoreType['timeRange']) => void;
   setHovered: (statIndex: number, hovered: boolean) => void;
   updateStats: (stats: Omit<MoveStat, 'hovered'>[] | null) => void;
+  resetTimeRange: () => void;
 };
 
 export const useAnalyzerStore = create<AnalyzerStoreType>()(
@@ -52,6 +53,14 @@ export const useAnalyzerStore = create<AnalyzerStoreType>()(
               ...stat,
               hovered: false,
             })),
+      });
+    },
+    resetTimeRange: () => {
+      set({
+        timeRange: {
+          fromUnix: undefined,
+          toUnix: undefined,
+        },
       });
     },
   })),
