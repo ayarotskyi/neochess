@@ -75,7 +75,7 @@ const CalendarComponent = ({ onClose, ...props }: Props) => {
       if (state.timeRange.fromUnix) {
         result.push(new DateObject(state.timeRange.fromUnix * 1000));
         if (state.timeRange.toUnix) {
-          new DateObject(state.timeRange.toUnix * 1000);
+          result.push(new DateObject(state.timeRange.toUnix * 1000));
         }
       }
       return result;
@@ -102,6 +102,12 @@ const CalendarComponent = ({ onClose, ...props }: Props) => {
       return;
     }
 
+    // filter from the start of the day
+    values[0].setHour(0);
+    values[0].setMinute(0);
+    // until the end of the day
+    values[1].setHour(23);
+    values[1].setMinute(59);
     setTimeRange({
       fromUnix: values[0].unix,
       toUnix: values[1].unix,
