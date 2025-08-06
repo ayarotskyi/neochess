@@ -140,7 +140,7 @@ struct ChessComPlayerReponse {
 
 #[derive(serde::Deserialize)]
 struct ChessComGameResponse {
-    pub pgn: String,
+    pub pgn: Option<String>,
     pub end_time: u64,
     pub white: ChessComPlayerReponse,
     pub black: ChessComPlayerReponse,
@@ -157,7 +157,7 @@ impl Into<NewGame> for ChessComGameResponse {
                 .then_some(Color::White)
                 .or_else(|| (self.black.result.to_lowercase() == "win").then_some(Color::Black)),
             PlatformName::ChessCom,
-            self.pgn,
+            self.pgn.unwrap_or_default(),
             DateTime::from_timestamp(self.end_time as i64, 0).unwrap_or(DateTime::UNIX_EPOCH),
         )
     }

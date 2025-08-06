@@ -57,10 +57,17 @@ impl Postgres {
 
         for new_game in new_games {
             let mut reader = Reader::new(io::Cursor::new(new_game.pgn()));
-            let position_meta_vec = reader
-                .read_game(&mut PositionVisitor::new(new_game.pgn().into()))
-                .map_err(|_| InvalidPgnError(new_game.pgn().into()))?
-                .unwrap_or(Err(InvalidPgnError(new_game.pgn().into())))?;
+            let position_meta_vec =
+                match reader.read_game(&mut PositionVisitor::new(new_game.pgn().into())) {
+                    Ok(option) => match option {
+                        Some(result) => match result {
+                            Ok(result) => result,
+                            Err(_) => continue,
+                        },
+                        None => continue,
+                    },
+                    Err(_) => continue,
+                };
 
             game_map.insert(
                 *new_game.finished_at(),
