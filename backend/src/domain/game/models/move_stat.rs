@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use chrono::{DateTime, Utc};
 
 pub struct MoveStat {
     move_uci: String,
@@ -6,7 +6,7 @@ pub struct MoveStat {
     wins: u64,
     draws: u64,
     avg_opponent_elo: u16,
-    last_played_at: SystemTime,
+    last_played_at: DateTime<Utc>,
 }
 
 impl MoveStat {
@@ -16,7 +16,7 @@ impl MoveStat {
         wins: u64,
         draws: u64,
         avg_opponent_elo: u16,
-        last_played_at: SystemTime,
+        last_played_at: DateTime<Utc>,
     ) -> Self {
         Self {
             move_uci,
@@ -48,7 +48,7 @@ impl MoveStat {
         &self.avg_opponent_elo
     }
 
-    pub fn last_played_at(&self) -> &SystemTime {
+    pub fn last_played_at(&self) -> &DateTime<Utc> {
         &self.last_played_at
     }
 }

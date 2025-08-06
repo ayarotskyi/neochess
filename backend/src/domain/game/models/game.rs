@@ -1,5 +1,4 @@
-use std::time::SystemTime;
-
+use chrono::{DateTime, Utc};
 use strum_macros::{EnumString, IntoStaticStr};
 
 use crate::domain::{game::models::pgn::Pgn, platform::models::PlatformName};
@@ -22,7 +21,7 @@ pub struct Game {
     /// platform name where the game was played
     platform_name: PlatformName,
     pgn: Pgn,
-    finished_at: SystemTime,
+    finished_at: DateTime<Utc>,
 }
 
 impl Game {
@@ -35,7 +34,7 @@ impl Game {
         winner: Option<Color>,
         platform_name: PlatformName,
         pgn: Pgn,
-        finished_at: SystemTime,
+        finished_at: DateTime<Utc>,
     ) -> Self {
         Self {
             id: id,
@@ -78,7 +77,7 @@ impl Game {
         &self.pgn
     }
 
-    pub fn finished_at(&self) -> &SystemTime {
+    pub fn finished_at(&self) -> &DateTime<Utc> {
         &self.finished_at
     }
 

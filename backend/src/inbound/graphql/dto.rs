@@ -1,5 +1,3 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
 use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
@@ -57,11 +55,7 @@ impl From<Game> for GraphQLGame {
             winner: value.winner().map(|c| GraphQLColor::from(*c)),
             platform_name: GraphQLPlatformName::from(*value.platform_name()),
             pgn: value.pgn().to_string(),
-            finished_at: value
-                .finished_at()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or(Duration::new(0, 0))
-                .as_secs() as i32,
+            finished_at: value.finished_at().timestamp() as i32,
         }
     }
 }
@@ -109,11 +103,7 @@ impl From<MoveStat> for GraphQLMoveStat {
             wins: *value.wins() as i32,
             draws: *value.draws() as i32,
             avg_opponent_elo: *value.avg_opponent_elo() as i32,
-            last_played_at: value
-                .last_played_at()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or(Duration::from_secs(0))
-                .as_secs() as i32,
+            last_played_at: value.last_played_at().timestamp() as i32,
         }
     }
 }

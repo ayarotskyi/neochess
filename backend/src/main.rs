@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Prepare the Game Service
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let postgres = Postgres::new(database_url)?;
+    let postgres = Postgres::new(database_url).await?;
     let fen_validator = fen_validator::Validator;
     let game_service = game::service::Service::new(postgres, fen_validator);
 

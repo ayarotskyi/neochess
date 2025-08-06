@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use chrono::{DateTime, Utc};
 
 use crate::domain::{game::models::game::Color, platform::models::PlatformName};
 
@@ -11,7 +11,7 @@ pub struct NewGame {
     winner: Option<Color>,
     platform_name: PlatformName,
     pgn: String,
-    finished_at: SystemTime,
+    finished_at: DateTime<Utc>,
 }
 
 impl NewGame {
@@ -23,7 +23,7 @@ impl NewGame {
         winner: Option<Color>,
         platform_name: PlatformName,
         pgn: String,
-        finished_at: SystemTime,
+        finished_at: DateTime<Utc>,
     ) -> Self {
         Self {
             white: white,
@@ -65,7 +65,7 @@ impl NewGame {
         &self.pgn
     }
 
-    pub fn finished_at(&self) -> &SystemTime {
+    pub fn finished_at(&self) -> &DateTime<Utc> {
         &self.finished_at
     }
 }

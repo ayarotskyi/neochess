@@ -1,33 +1,18 @@
-use std::{
-    str::FromStr,
-    time::{Duration, SystemTime},
-};
+use std::str::FromStr;
 
-use crate::{
-    domain::{
-        game::models::{
-            fen::Fen,
-            game::{Color, Game},
-            move_stat::MoveStat,
-            new_game::NewGame,
-            pgn::Pgn,
-            position::Position,
-        },
-        platform::models::PlatformName,
+use crate::domain::{
+    game::models::{
+        fen::Fen,
+        game::{Color, Game},
+        move_stat::MoveStat,
+        new_game::NewGame,
+        pgn::Pgn,
+        position::Position,
     },
-    outbound::postgres::schema::{
-        game::{self},
-        game_position, position,
-    },
+    platform::models::PlatformName,
 };
-use chrono::DateTime;
-use diesel::pg::Pg;
-use diesel::prelude::*;
-use diesel::row::NamedRow;
 
 /// DTO for game model
-#[derive(Queryable, Identifiable, Debug)]
-#[diesel(table_name = game)]
 pub struct GameDto {
     pub id: uuid::Uuid,
     pub white: String,
@@ -35,9 +20,9 @@ pub struct GameDto {
     pub black: String,
     pub black_elo: i16,
     pub winner: Option<String>,
-    pub platform_name: PlatformName,
+    pub platform_name: String,
     pub pgn: String,
-    pub finished_at: SystemTime,
+    pub finished_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl From<GameDto> for Game {
@@ -52,14 +37,13 @@ impl From<GameDto> for Game {
                 Some(value) => Color::from_str(&value).ok(),
                 None => None,
             },
-            value.platform_name,
+            PlatformName::from_str(&value.platform_name).unwrap_or(PlatformName::ChessCom),
             Pgn::new_unchecked(&value.pgn),
             value.finished_at,
         )
     }
 }
-#[derive(Insertable)]
-#[diesel(table_name = game)]
+
 pub struct NewGameDto {
     pub white: String,
     pub white_elo: i16,
@@ -84,29 +68,12 @@ impl From<NewGame> for NewGameDto {
             platform_name: <&PlatformName as Into<&'static str>>::into(value.platform_name())
                 .to_string(),
             pgn: value.pgn().to_string(),
-            finished_at: match DateTime::from_timestamp(
-                (match value.finished_at().duration_since(SystemTime::UNIX_EPOCH) {
-                    Ok(duration) => duration,
-                    Err(err) => {
-                        unreachable!("New game timestamp is earlier than unix epoch: {}", err)
-                    }
-                })
-                .as_secs() as i64,
-                0,
-            ) {
-                Some(time) => time,
-                None => unreachable!(
-                    "Invalid timestamp for finished_at: {:?}",
-                    value.finished_at()
-                ),
-            },
+            finished_at: *value.finished_at(),
         }
     }
 }
 
 /// DTO for position model
-#[derive(Queryable, Identifiable, Debug)]
-#[diesel(table_name = position)]
 pub struct PositionDto {
     pub id: uuid::Uuid,
     pub fen: String,
@@ -118,17 +85,10 @@ impl From<PositionDto> for Position {
     }
 }
 
-#[derive(Insertable)]
-#[diesel(table_name = position)]
 pub struct NewPositionDto {
     pub fen: String,
 }
 
-#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Insertable)]
-#[diesel(primary_key(game_id, position_id, move_idx))]
-#[diesel(belongs_to(GameDto, foreign_key = game_id))]
-#[diesel(belongs_to(PositionDto, foreign_key = position_id))]
-#[diesel(table_name = game_position)]
 pub struct GamePositionDto {
     pub game_id: uuid::Uuid,
     pub position_id: uuid::Uuid,
@@ -136,6 +96,7 @@ pub struct GamePositionDto {
     pub next_move_uci: Option<String>,
 }
 
+#[derive(sqlx::FromRow)]
 pub struct MoveStatDto {
     pub next_move_uci: String,
     pub total: i64,
@@ -143,19 +104,6 @@ pub struct MoveStatDto {
     pub draws: i64,
     pub avg_opponent_elo: i32,
     pub last_played_at: chrono::DateTime<chrono::Utc>,
-}
-
-impl QueryableByName<Pg> for MoveStatDto {
-    fn build<'a>(row: &impl diesel::row::NamedRow<'a, Pg>) -> diesel::deserialize::Result<Self> {
-        Ok(Self {
-            next_move_uci: NamedRow::get::<diesel::sql_types::Text, _>(row, "next_move_uci")?,
-            total: NamedRow::get(row, "total")?,
-            wins: NamedRow::get(row, "wins")?,
-            draws: NamedRow::get(row, "draws")?,
-            avg_opponent_elo: NamedRow::get(row, "avg_opponent_elo")?,
-            last_played_at: NamedRow::get(row, "last_played_at")?,
-        })
-    }
 }
 
 impl Into<MoveStat> for MoveStatDto {
@@ -166,12 +114,7 @@ impl Into<MoveStat> for MoveStatDto {
             self.wins as u64,
             self.draws as u64,
             self.avg_opponent_elo as u16,
-            match SystemTime::UNIX_EPOCH.checked_add(Duration::from_millis(
-                self.last_played_at.timestamp_millis() as u64,
-            )) {
-                Some(time) => time,
-                None => unreachable!("Invalid last_played_at value: {}", self.last_played_at),
-            },
+            self.last_played_at,
         )
     }
 }

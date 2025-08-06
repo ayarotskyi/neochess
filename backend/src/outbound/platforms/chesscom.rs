@@ -1,7 +1,5 @@
-use std::time::{Duration, SystemTime};
-
 use anyhow::anyhow;
-use chrono::Datelike;
+use chrono::{DateTime, Datelike};
 
 use crate::domain::{
     game::models::game::Color,
@@ -160,9 +158,7 @@ impl Into<NewGame> for ChessComGameResponse {
                 .or_else(|| (self.black.result.to_lowercase() == "win").then_some(Color::Black)),
             PlatformName::ChessCom,
             self.pgn,
-            SystemTime::UNIX_EPOCH
-                .checked_add(Duration::from_secs(self.end_time))
-                .unwrap_or(SystemTime::UNIX_EPOCH),
+            DateTime::from_timestamp(self.end_time as i64, 0).unwrap_or(DateTime::UNIX_EPOCH),
         )
     }
 }
@@ -195,11 +191,7 @@ impl PlatformApiClient for ChessComClient {
                 new_games
                     .into_iter()
                     .filter(|game| {
-                        game.finished_at()
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .unwrap_or(Duration::from_secs(0))
-                            .as_secs()
-                            > from_timestamp.unwrap_or(0)
+                        game.finished_at().timestamp() as u64 > from_timestamp.unwrap_or(0)
                     })
                     .collect::<Vec<NewGame>>()
             });

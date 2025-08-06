@@ -12,8 +12,6 @@ pub struct InvalidFenError;
 pub enum GameRepositoryError {
     #[error("database error: {0}")]
     DatabaseError(String),
-    #[error("connection failed: {0}")]
-    ConnectionError(String),
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }
