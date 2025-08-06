@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use chrono::{DateTime, Datelike};
+use rayon::prelude::*;
 
 use crate::domain::{
     game::models::game::Color,
@@ -89,15 +89,14 @@ impl ChessComClient {
 
         let mut new_games = Vec::new();
 
-        let results = futures::future::try_join_all(tasks)
-            .await
-            .map_err(|e| PlatformError::Unknown(anyhow!(e)))?;
-
-        for result in results {
+        for task in tasks {
+            let result = task
+                .await
+                .map_err(|err| PlatformError::Unknown(err.into()))?;
             match result {
                 Ok(games) => new_games.extend(games),
                 Err(e) => return Err(e),
-            }
+            };
         }
 
         Ok(new_games)
@@ -189,7 +188,7 @@ impl PlatformApiClient for ChessComClient {
             .await
             .map(|new_games| {
                 new_games
-                    .into_iter()
+                    .into_par_iter()
                     .filter(|game| {
                         game.finished_at().timestamp() as u64 > from_timestamp.unwrap_or(0)
                     })

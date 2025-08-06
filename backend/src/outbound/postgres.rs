@@ -1,9 +1,9 @@
 pub mod dto;
 
-use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use pgn_reader::Reader;
+use rayon::prelude::*;
 use sqlx::{Pool, QueryBuilder, Row};
 use std::{collections::HashMap, io};
 use thiserror::Error;
@@ -46,36 +46,36 @@ impl Postgres {
     }
 
     pub async fn save_games(&self, new_games: Vec<NewGame>) -> Result<Vec<Uuid>, PostgresError> {
-        if new_games.len() == 0 {
+        let games_len = new_games.len();
+
+        if games_len == 0 {
             return Ok(Vec::new());
         }
 
-        let mut game_map: HashMap<DateTime<Utc>, (NewGameDto, Vec<PositionMetadata>)> =
-            HashMap::with_capacity(new_games.len());
-
-        let mut game_entries: Vec<(Uuid, DateTime<Utc>)> = Vec::with_capacity(new_games.len());
-
-        for new_game in new_games {
-            let mut reader = Reader::new(io::Cursor::new(new_game.pgn()));
-            let position_meta_vec =
-                match reader.read_game(&mut PositionVisitor::new(new_game.pgn().into())) {
-                    Ok(option) => match option {
-                        Some(result) => match result {
-                            Ok(result) => result,
-                            Err(_) => continue,
+        let game_map: HashMap<DateTime<Utc>, (NewGameDto, Vec<PositionMetadata>)> =
+            HashMap::from_par_iter(new_games.into_par_iter().filter_map(|new_game| {
+                let mut reader = Reader::new(io::Cursor::new(new_game.pgn()));
+                let position_meta_vec =
+                    match reader.read_game(&mut PositionVisitor::new(new_game.pgn().into())) {
+                        Ok(option) => match option {
+                            Some(result) => match result {
+                                Ok(result) => result,
+                                Err(_) => return None,
+                            },
+                            None => return None,
                         },
-                        None => continue,
-                    },
-                    Err(_) => continue,
-                };
+                        Err(_) => return None,
+                    };
 
-            game_map.insert(
-                *new_game.finished_at(),
-                (new_game.into(), position_meta_vec),
-            );
-        }
+                Some((
+                    *new_game.finished_at(),
+                    (new_game.into(), position_meta_vec),
+                ))
+            }));
 
         let mut tx = self.pool.begin().await?;
+
+        let mut game_entries: Vec<(Uuid, DateTime<Utc>)> = Vec::with_capacity(games_len);
 
         for game_chunk in game_map
             .values()
@@ -111,27 +111,22 @@ impl Postgres {
                 game_entries.push((id, finished_at));
             }
         }
-        let game_ids = game_entries
-            .iter()
-            .map(|(game_id, _)| *game_id)
-            .collect::<_>();
 
-        let mut position_meta_vec: Vec<(usize, Uuid, PositionMetadata)> = Vec::new();
-        for (game_id, finished_at) in game_entries {
-            position_meta_vec.extend(
-                game_map
-                    .get(&finished_at)
-                    .ok_or(PostgresError::Unknown(anyhow!(
-                        "No game with timestamp {:?}",
-                        finished_at
-                    )))?
-                    .1
-                    .iter()
-                    .enumerate()
-                    .map(|(move_idx, position_meta)| (move_idx, game_id, position_meta.clone()))
-                    .collect::<Vec<_>>(),
-            );
-        }
+        let position_meta_vec: Vec<(usize, Uuid, PositionMetadata)> = game_entries
+            .par_iter()
+            .filter_map(|(game_id, finished_at)| {
+                game_map.get(&finished_at).map(|(_, meta_vec)| {
+                    meta_vec
+                        .iter()
+                        .enumerate()
+                        .map(|(move_idx, position_meta)| {
+                            (move_idx, *game_id, position_meta.clone())
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect::<Vec<_>>()
+            .concat();
 
         // Split query into chunks with size u16::MAX / 4
         // Maximum amount of arguments in postgres is u16::MAX
@@ -174,7 +169,12 @@ impl Postgres {
 
         tx.commit().await?;
 
-        Ok::<Vec<Uuid>, PostgresError>(game_ids)
+        Ok::<Vec<Uuid>, PostgresError>(
+            game_entries
+                .iter()
+                .map(|(game_id, _)| *game_id)
+                .collect::<_>(),
+        )
     }
 
     pub async fn latest_game_timestamp_seconds_by_username(

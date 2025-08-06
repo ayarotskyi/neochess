@@ -10,7 +10,6 @@ actix-web = "4.11.0"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
 chrono = "0.4.41"
-futures = "0.3.31"
 juniper = { version = "0.16.2", features = ["uuid"] }
 juniper_actix = "0.6.0"
 pgn-reader = "0.28.0"
@@ -29,3 +28,4 @@ sqlx = { version = "0.8", features = [
     "chrono",
     "uuid",
 ] }
+rayon = "1.10.0"
