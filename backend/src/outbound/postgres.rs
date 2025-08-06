@@ -73,7 +73,8 @@ impl Postgres {
         for game_chunk in game_map
             .values()
             .collect::<Vec<_>>()
-            .chunks((u16::MAX / 4).into())
+            // Each game entry requires 8 params
+            .chunks((u16::MAX / 8).into())
         {
             let mut game_query_builder = QueryBuilder::new(
                 "INSERT INTO game 
