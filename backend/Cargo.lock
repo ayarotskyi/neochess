@@ -695,6 +695,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "eui48"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c4cf866e4d3e5e773691f5f61615a224a7b0b72b7daf994fc56d1b82dab0b6b"
+dependencies = [
+ "rustc-serialize",
+]
+
+[[package]]
 name = "event-listener"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1355,7 +1364,7 @@ dependencies = [
  "serde",
  "smartstring",
  "static_assertions",
- "uuid",
+ "uuid 1.17.0",
 ]
 
 [[package]]
@@ -1539,6 +1548,7 @@ dependencies = [
  "chrono",
  "juniper",
  "juniper_actix",
+ "pgcopy",
  "pgn-reader",
  "rayon",
  "reqwest",
@@ -1550,7 +1560,7 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "tokio",
- "uuid",
+ "uuid 1.17.0",
 ]
 
 [[package]]
@@ -1714,6 +1724,18 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+
+[[package]]
+name = "pgcopy"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "262d29114cd77695d52b8a3f142cfc4d79098e852b48a25dbd476c0b41ecf366"
+dependencies = [
+ "byteorder",
+ "chrono",
+ "eui48",
+ "uuid 0.7.4",
+]
 
 [[package]]
 name = "pgn-reader"
@@ -2017,6 +2039,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "989e6739f80c4ad5b13e0fd7fe89531180375b18520cc8c82080e4dc4035b84f"
 
 [[package]]
+name = "rustc-serialize"
+version = "0.3.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe834bc780604f4674073badbad26d7219cadfb4a2275802db12cbae17498401"
+
+[[package]]
 name = "rustix"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2317,7 +2345,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
- "uuid",
+ "uuid 1.17.0",
 ]
 
 [[package]]
@@ -2398,7 +2426,7 @@ dependencies = [
  "stringprep",
  "thiserror",
  "tracing",
- "uuid",
+ "uuid 1.17.0",
  "whoami",
 ]
 
@@ -2437,7 +2465,7 @@ dependencies = [
  "stringprep",
  "thiserror",
  "tracing",
- "uuid",
+ "uuid 1.17.0",
  "whoami",
 ]
 
@@ -2464,7 +2492,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
- "uuid",
+ "uuid 1.17.0",
 ]
 
 [[package]]
@@ -2877,10 +2905,17 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "uuid"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90dbc611eb48397705a6b0f6e917da23ae517e4d127123d2cf7674206627d32a"
+
+[[package]]
+name = "uuid"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
 dependencies = [
+ "getrandom 0.3.3",
  "js-sys",
  "wasm-bindgen",
 ]

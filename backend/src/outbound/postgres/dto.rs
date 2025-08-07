@@ -43,7 +43,7 @@ impl From<GameDto> for Game {
         )
     }
 }
-
+#[derive(Clone)]
 pub struct NewGameDto {
     pub white: String,
     pub white_elo: i16,

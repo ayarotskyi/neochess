@@ -81,6 +81,7 @@ impl ChessComClient {
                         .into_iter()
                         .map(|game| game.into())
                         .collect::<Vec<NewGame>>();
+                    println!("finished fetching {}", url);
 
                     Ok::<Vec<NewGame>, PlatformError>(games)
                 })

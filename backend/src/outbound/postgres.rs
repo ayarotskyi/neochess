@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use pgn_reader::Reader;
 use rayon::prelude::*;
-use sqlx::{Pool, QueryBuilder, Row};
+use sqlx::{Pool, Row, postgres::PgRow};
 use std::{collections::HashMap, io};
 use thiserror::Error;
 use uuid::Uuid;
@@ -28,6 +28,12 @@ use crate::{
         postgres::dto::{MoveStatDto, NewGameDto},
     },
 };
+#[derive(Clone)]
+struct PositionRelation {
+    pub move_idx: usize,
+    pub game_id: uuid::Uuid,
+    pub metadata: PositionMetadata,
+}
 
 #[derive(Clone)]
 pub struct Postgres {
@@ -45,7 +51,56 @@ impl Postgres {
         Ok(Self { pool })
     }
 
-    pub async fn save_games(&self, new_games: Vec<NewGame>) -> Result<Vec<Uuid>, PostgresError> {
+    fn games_to_bytes(&self, game_dto_vec: Vec<NewGameDto>) -> Result<Vec<u8>, PostgresError> {
+        let mut buf: Vec<u8> = vec![];
+        let mut encoder = pgcopy::Encoder::new(&mut buf);
+        encoder.write_header().unwrap();
+
+        for game_dto in game_dto_vec {
+            encoder.write_tuple(8)?;
+            encoder.write_str(game_dto.white)?;
+            encoder.write_smallint(game_dto.white_elo)?;
+            encoder.write_str(game_dto.black)?;
+            encoder.write_smallint(game_dto.black_elo)?;
+            match game_dto.winner {
+                Some(winner) => encoder.write_str(winner)?,
+                None => encoder.write_null()?,
+            };
+            encoder.write_str(game_dto.platform_name)?;
+            encoder.write_str(game_dto.pgn)?;
+            encoder.write_timestamp_with_time_zone(game_dto.finished_at)?;
+        }
+
+        encoder.write_trailer()?;
+
+        return Ok(buf);
+    }
+
+    fn position_relation_vec_to_bytes(
+        &self,
+        position_relation_vec: Vec<PositionRelation>,
+    ) -> Result<Vec<u8>, PostgresError> {
+        let mut buf: Vec<u8> = vec![];
+        let mut encoder = pgcopy::Encoder::new(&mut buf);
+        encoder.write_header().unwrap();
+
+        for position_relation in position_relation_vec {
+            encoder.write_tuple(4)?;
+            encoder.write_uuid(*position_relation.game_id.as_bytes())?;
+            encoder.write_smallint(position_relation.move_idx as i16)?;
+            encoder.write_str(position_relation.metadata.fen.to_string())?;
+            match position_relation.metadata.next_move_uci {
+                Some(uci) => encoder.write_str(uci.to_string())?,
+                None => encoder.write_null()?,
+            };
+        }
+
+        encoder.write_trailer()?;
+
+        return Ok(buf);
+    }
+
+    async fn save_games(&self, new_games: Vec<NewGame>) -> Result<Vec<Uuid>, PostgresError> {
         let games_len = new_games.len();
 
         if games_len == 0 {
@@ -75,52 +130,69 @@ impl Postgres {
 
         let mut tx = self.pool.begin().await?;
 
-        let mut game_entries: Vec<(Uuid, DateTime<Utc>)> = Vec::with_capacity(games_len);
+        let temp_game_table_name = Uuid::new_v4();
 
-        for game_chunk in game_map
-            .values()
-            .collect::<Vec<_>>()
-            // Each game entry requires 8 params
-            .chunks((u16::MAX / 8).into())
-        {
-            let mut game_query_builder = QueryBuilder::new(
-                "INSERT INTO game 
-                (white, white_elo, black, black_elo, winner, platform_name, pgn, finished_at) ",
-            );
+        sqlx::query(&format!(
+            "CREATE TEMPORARY TABLE \"{}\" (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            white VARCHAR NOT NULL,
+            white_elo SMALLINT NOT NULL,
+            black VARCHAR NOT NULL,
+            black_elo SMALLINT NOT NULL,
+            winner CHAR(5),
+            platform_name VARCHAR NOT NULL,
+            pgn VARCHAR NOT NULL,
+            finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            UNIQUE (white, black, finished_at, platform_name)
+        );",
+            temp_game_table_name
+        ))
+        .execute(&mut *tx)
+        .await?;
 
-            game_query_builder.push_values(game_chunk, |mut b, (new_game_dto, _)| {
-                b.push_bind(new_game_dto.white.clone())
-                    .push_bind(new_game_dto.white_elo)
-                    .push_bind(new_game_dto.black.clone())
-                    .push_bind(new_game_dto.black_elo)
-                    .push_bind(new_game_dto.winner.clone())
-                    .push_bind(new_game_dto.platform_name.clone())
-                    .push_bind(new_game_dto.pgn.clone())
-                    .push_bind(new_game_dto.finished_at);
-            });
+        let mut copy_in = tx
+            .copy_in_raw(&format!(
+                "COPY \"{}\" 
+        (white, white_elo, black, black_elo, winner, platform_name, pgn, finished_at) 
+        FROM STDIN 
+        WITH (FORMAT binary);",
+                temp_game_table_name
+            ))
+            .await?;
+        copy_in
+            .send(
+                self.games_to_bytes(
+                    game_map
+                        .values()
+                        .map(|(game_dto, _)| game_dto.clone())
+                        .collect::<_>(),
+                )?,
+            )
+            .await?;
+        copy_in.finish().await?;
 
-            game_query_builder.push(
-                " ON CONFLICT DO NOTHING
+        let game_entries: Vec<(Uuid, DateTime<Utc>)> = sqlx::query(&format!(
+            "INSERT INTO game
+        SELECT * FROM \"{}\"
+        ON CONFLICT DO NOTHING
         RETURNING id, finished_at;",
-            );
+            temp_game_table_name
+        ))
+        .map(|row: PgRow| (row.get("id"), row.get("finished_at")))
+        .fetch_all(&mut *tx)
+        .await?;
 
-            let game_rows = game_query_builder.build().fetch_all(&mut *tx).await?;
-            for row in game_rows {
-                let id: Uuid = row.try_get("id")?;
-                let finished_at: DateTime<Utc> = row.try_get("finished_at")?;
-                game_entries.push((id, finished_at));
-            }
-        }
-
-        let position_meta_vec: Vec<(usize, Uuid, PositionMetadata)> = game_entries
+        let position_relation_vec: Vec<PositionRelation> = game_entries
             .par_iter()
             .filter_map(|(game_id, finished_at)| {
                 game_map.get(&finished_at).map(|(_, meta_vec)| {
                     meta_vec
                         .iter()
                         .enumerate()
-                        .map(|(move_idx, position_meta)| {
-                            (move_idx, *game_id, position_meta.clone())
+                        .map(|(move_idx, position_meta)| PositionRelation {
+                            move_idx,
+                            game_id: *game_id,
+                            metadata: position_meta.clone(),
                         })
                         .collect::<Vec<_>>()
                 })
@@ -128,46 +200,56 @@ impl Postgres {
             .collect::<Vec<_>>()
             .concat();
 
-        // Split query into chunks with size u16::MAX / 4
-        // Maximum amount of arguments in postgres is u16::MAX
-        // This query uses 4 arguments per one metadata entry
-        for position_meta_chunk in position_meta_vec.chunks((u16::MAX / 4).into()) {
-            let mut position_query_builder: QueryBuilder<'_, sqlx::Postgres> = QueryBuilder::new(
-                "WITH meta AS (
-                SELECT * FROM (",
-            );
+        let position_relation_table_name = Uuid::new_v4();
 
-            position_query_builder.push_values(
-                position_meta_chunk,
-                |mut b, (move_idx, game_id, position_meta)| {
-                    b.push_bind(position_meta.fen.to_string())
-                        .push_bind(position_meta.next_move_uci.map(|uci| uci.to_string()))
-                        .push_bind(*move_idx as i64)
-                        .push_bind(game_id);
-                },
-            );
+        sqlx::query(&format!(
+            "CREATE TEMPORARY TABLE \"{}\" (
+            game_id UUID NOT NULL,
+            move_idx SMALLINT,
+            fen TEXT NOT NULL,
+            next_move_uci TEXT
+        );",
+            position_relation_table_name
+        ))
+        .execute(&mut *tx)
+        .await?;
 
-            position_query_builder.push(
-                ") as t(fen, next_move_uci, move_idx, game_id)
-            ), inserted_position AS (INSERT INTO position (fen)
-                SELECT DISTINCT(meta.fen) FROM meta
-                ON CONFLICT (fen) DO UPDATE
-                SET fen = EXCLUDED.fen
-                RETURNING position.id, position.fen)
-            INSERT INTO game_position
-                SELECT meta.game_id::UUID as game_id, 
-                inserted_position.id as position_id, 
-                meta.move_idx as move_idx, 
-                meta.next_move_uci as next_move_uci
-                FROM inserted_position
-                INNER JOIN meta ON inserted_position.fen = meta.fen
+        let mut copy_in = tx
+            .copy_in_raw(&format!(
+                "COPY \"{}\" 
+        (game_id, move_idx, fen, next_move_uci) 
+        FROM STDIN 
+        WITH (FORMAT binary);",
+                position_relation_table_name
+            ))
+            .await?;
+
+        copy_in
+            .send(self.position_relation_vec_to_bytes(position_relation_vec)?)
+            .await?;
+        copy_in.finish().await?;
+
+        sqlx::query(&format!(
+            "INSERT INTO position (fen)
+            SELECT fen FROM \"{}\"
             ON CONFLICT DO NOTHING;",
-            );
+            position_relation_table_name
+        ))
+        .execute(&mut *tx)
+        .await?;
 
-            position_query_builder.build().execute(&mut *tx).await?;
-        }
+        sqlx::query(&format!(
+            "INSERT INTO game_position (game_id, position_id, move_idx, next_move_uci)
+            SELECT game_id, position.id, move_idx, next_move_uci FROM \"{0}\"
+            INNER JOIN position ON position.fen = \"{0}\".fen
+            ON CONFLICT DO NOTHING;",
+            position_relation_table_name
+        ))
+        .execute(&mut *tx)
+        .await?;
 
         tx.commit().await?;
+        println!("finished storing");
 
         Ok::<Vec<Uuid>, PostgresError>(
             game_entries
@@ -177,7 +259,27 @@ impl Postgres {
         )
     }
 
-    pub async fn latest_game_timestamp_seconds_by_username(
+    async fn save_games_distributed(
+        &self,
+        new_games: Vec<NewGame>,
+    ) -> Result<Vec<Uuid>, PostgresError> {
+        let tasks = new_games
+            .chunks(1000)
+            .map(|new_games_chunk| self.save_games(new_games_chunk.to_vec()));
+
+        let mut result = Vec::new();
+        let mut count = 0;
+        let length = tasks.len();
+        for task in tasks {
+            result.extend(task.await?);
+            count = count + 1;
+            println!("finished task {}/{}", count, length);
+        }
+
+        return Ok(result);
+    }
+
+    async fn latest_game_timestamp_seconds_by_username(
         &self,
         platform_name: String,
         username: String,
@@ -258,6 +360,8 @@ pub enum PostgresError {
     #[error(transparent)]
     InvalidPgn(#[from] InvalidPgnError),
     #[error(transparent)]
+    SerializationError(#[from] std::io::Error),
+    #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }
 
@@ -275,7 +379,7 @@ impl From<PostgresError> for GameRepositoryError {
 #[async_trait]
 impl GameRepository for Postgres {
     async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, GameRepositoryError> {
-        Ok(self.save_games(games).await?)
+        Ok(self.save_games_distributed(games).await?)
     }
 
     async fn get_latest_game_timestamp_seconds(
