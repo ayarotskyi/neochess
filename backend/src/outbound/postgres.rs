@@ -119,33 +119,44 @@ impl Postgres {
                 temp_table_name
             ))
             .await?;
-        copy_in
-            .send(Self::games_to_bytes(new_game_dto_vec)?)
-            .await?;
-        copy_in.finish().await?;
+        let result = copy_in.send(Self::games_to_bytes(new_game_dto_vec)?).await;
+
+        match result {
+            Ok(_) => {
+                copy_in.finish().await?;
+            }
+            Err(_) => {
+                copy_in.abort("").await?;
+            }
+        }
 
         Ok(())
     }
 
     async fn copy_positions(
         position_relation_vec: Vec<PositionRelation>,
-        temp_table_name: String,
         mut conn: PoolConnection<sqlx::Postgres>,
     ) -> Result<(), PostgresError> {
         let mut copy_in = conn
-            .copy_in_raw(&format!(
-                "COPY \"{}\" 
+            .copy_in_raw(
+                "COPY game_position 
         (game_id, move_idx, fen, next_move_uci) 
         FROM STDIN 
         WITH (FORMAT binary);",
-                temp_table_name
-            ))
+            )
             .await?;
 
-        copy_in
+        let result = copy_in
             .send(Self::position_relation_vec_to_bytes(position_relation_vec)?)
-            .await?;
-        copy_in.finish().await?;
+            .await;
+        match result {
+            Ok(_) => {
+                copy_in.finish().await?;
+            }
+            Err(_) => {
+                copy_in.abort("").await?;
+            }
+        }
 
         Ok(())
     }
@@ -163,6 +174,14 @@ impl Postgres {
             username,
             Into::<&'static str>::into(platform_name)
         );
+
+        sqlx::query(&format!(
+            "DROP TABLE IF EXISTS \"{}\";",
+            games_temp_table_name
+        ))
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(&format!(
             "CREATE UNLOGGED TABLE IF NOT EXISTS \"{}\" (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -186,24 +205,26 @@ impl Postgres {
         let instant = Instant::now();
         let mut join_set = JoinSet::new();
         let count = Arc::new(AtomicI16::new(0));
-        let amount = new_games.len() / 1000;
-        new_games.chunks(1000).for_each(|new_games_chunk| {
-            let pool = self.pool.clone();
-            let new_game_dto_vec = new_games_chunk
-                .iter()
-                .map(|new_game| new_game.clone().into())
-                .collect::<_>();
-            let games_temp_table_name = games_temp_table_name.clone();
+        let amount = 8;
+        new_games
+            .chunks(new_games.len() / 8)
+            .for_each(|new_games_chunk| {
+                let pool = self.pool.clone();
+                let new_game_dto_vec = new_games_chunk
+                    .iter()
+                    .map(|new_game| new_game.clone().into())
+                    .collect::<_>();
+                let games_temp_table_name = games_temp_table_name.clone();
 
-            let count = count.clone();
-            join_set.spawn(async move {
-                let conn = pool.acquire().await?;
-                let res = Self::copy_games(new_game_dto_vec, games_temp_table_name, conn).await;
-                count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                println!("finished copying games {:?} / {}", count, amount);
-                res
+                let count = count.clone();
+                join_set.spawn(async move {
+                    let conn = pool.acquire().await?;
+                    let res = Self::copy_games(new_game_dto_vec, games_temp_table_name, conn).await;
+                    count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    println!("finished copying games {:?} / {}", count, amount);
+                    res
+                });
             });
-        });
 
         println!("created tasks for copying games in {:?}", instant.elapsed());
 
@@ -258,44 +279,19 @@ impl Postgres {
         );
 
         let instant = Instant::now();
-        let position_relation_temp_table_name = format!(
-            "temp_position_relation_{}_{}",
-            username,
-            Into::<&'static str>::into(platform_name)
-        );
-        sqlx::query(&format!(
-            "CREATE UNLOGGED TABLE IF NOT EXISTS \"{}\" (
-            game_id UUID NOT NULL,
-            move_idx SMALLINT,
-            fen TEXT NOT NULL,
-            next_move_uci TEXT
-        );",
-            position_relation_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
-        println!("created temp position table in {:?}", instant.elapsed());
-
-        let instant = Instant::now();
         let mut join_set = JoinSet::new();
         let count = Arc::new(AtomicI16::new(0));
-        let amount = position_relation_vec.len() / 50;
+        let amount = 8;
         position_relation_vec
-            .chunks(50)
+            .chunks(position_relation_vec.len() / 8)
             .for_each(|position_relation_chunk| {
                 let pool = self.pool.clone();
                 let position_relation_vec = position_relation_chunk.to_vec().clone();
-                let position_relation_temp_table_name = position_relation_temp_table_name.clone();
 
                 let count = count.clone();
                 join_set.spawn(async move {
                     let conn = pool.acquire().await?;
-                    let res = Self::copy_positions(
-                        position_relation_vec,
-                        position_relation_temp_table_name,
-                        conn,
-                    )
-                    .await;
+                    let res = Self::copy_positions(position_relation_vec, conn).await;
                     count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                     println!("finished copying positions {:?} / {}", count, amount);
                     res
@@ -312,42 +308,9 @@ impl Postgres {
         }
         println!("finished copying positions in {:?}", instant.elapsed());
 
-        let instant = Instant::now();
-        sqlx::query(&format!(
-            "INSERT INTO position (fen)
-            SELECT fen FROM \"{}\"
-            ON CONFLICT DO NOTHING;",
-            position_relation_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
-        println!("finished inserting position in {:?}", instant.elapsed());
-
-        let instant = Instant::now();
-        sqlx::query(&format!(
-            "INSERT INTO game_position (game_id, position_id, move_idx, next_move_uci)
-            SELECT game_id, position.id, move_idx, next_move_uci FROM \"{0}\"
-            INNER JOIN position ON position.fen = \"{0}\".fen
-            ON CONFLICT DO NOTHING;",
-            position_relation_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
-        println!(
-            "finished inserting game_position in {:?}",
-            instant.elapsed()
-        );
-
         sqlx::query(&format!(
             "DROP TABLE IF EXISTS \"{}\";",
             games_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
-
-        sqlx::query(&format!(
-            "DROP TABLE IF EXISTS \"{}\";",
-            position_relation_temp_table_name
         ))
         .execute(&self.pool)
         .await?;
@@ -363,20 +326,21 @@ impl Postgres {
         platform_name: &PlatformName,
         username: &str,
     ) -> Result<Option<chrono::DateTime<chrono::Utc>>, PostgresError> {
-        let record = sqlx::query!(
+        let latest_timestamp: Option<DateTime<Utc>> = sqlx::query(
             "SELECT MAX(finished_at) FROM game
         WHERE platform_name = $1
         AND (
             white = $2
             OR black = $2
         )",
-            Into::<&'static str>::into(platform_name),
-            username
         )
+        .bind(Into::<&'static str>::into(platform_name))
+        .bind(username)
+        .map(|row: PgRow| row.get(0))
         .fetch_one(&self.pool)
         .await?;
 
-        return Ok(record.max);
+        return Ok(latest_timestamp);
     }
 
     pub async fn query_move_stats(
@@ -396,10 +360,9 @@ impl Postgres {
                     AVG({})::INT avg_opponent_elo,
                     MAX(game.finished_at) last_played_at
                 FROM game_position
-                    JOIN position ON position.id = game_position.position_id
                     JOIN game ON game.id = game_position.game_id
                 WHERE game.platform_name = $2
-                    AND position.fen = $3
+                    AND game_position.fen = $3
                     AND game_position.next_move_uci IS NOT NULL
                     AND {} = $4
                     AND ($5 is NULL OR game.finished_at >= $5)
