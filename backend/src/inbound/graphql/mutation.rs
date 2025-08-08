@@ -1,7 +1,10 @@
 use juniper::{FieldResult, graphql_object, graphql_value};
 
 use crate::{
-    domain::{game::models::errors::GameRepositoryError, platform::models::PlatformError},
+    domain::{
+        game::models::errors::GameRepositoryError,
+        platform::models::{PlatformError, PlatformName},
+    },
     inbound::graphql::{GraphQLContext, dto::GraphQLPlatformName},
 };
 
@@ -16,9 +19,10 @@ impl Mutation {
         username: String,
         platform_name: GraphQLPlatformName,
     ) -> FieldResult<i32> {
+        let platform_name: PlatformName = platform_name.into();
         let latest_game_timestamp_seconds = ctx
             .game_service
-            .get_latest_game_timestamp_seconds(platform_name.clone().into(), username.clone())
+            .get_latest_game_timestamp_seconds(&platform_name, &username)
             .await?;
 
         let result = ctx
@@ -26,11 +30,13 @@ impl Mutation {
             .store_games(
                 ctx.platform_service
                     .fetch_games(
-                        username,
+                        username.clone(),
                         latest_game_timestamp_seconds,
-                        platform_name.into(),
+                        platform_name.clone().into(),
                     )
                     .await?,
+                &platform_name,
+                &username,
             )
             .await?
             .len();

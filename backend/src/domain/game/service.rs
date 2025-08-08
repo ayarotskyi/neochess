@@ -44,8 +44,13 @@ where
     R: GameRepository,
     V: FenValidator,
 {
-    async fn store_games(&self, games: Vec<NewGame>) -> Result<Vec<Uuid>, GameRepositoryError> {
-        let result = self.repo.store_games(games).await;
+    async fn store_games(
+        &self,
+        games: Vec<NewGame>,
+        platform_name: &PlatformName,
+        username: &str,
+    ) -> Result<Vec<Uuid>, GameRepositoryError> {
+        let result = self.repo.store_games(games, platform_name, username).await;
 
         let _ = result
             .as_ref()
@@ -56,8 +61,8 @@ where
 
     async fn get_latest_game_timestamp_seconds(
         &self,
-        platform_name: PlatformName,
-        username: String,
+        platform_name: &PlatformName,
+        username: &str,
     ) -> Result<Option<u64>, GameRepositoryError> {
         let result = self
             .repo
@@ -83,12 +88,12 @@ where
         let result = self
             .repo
             .get_move_stats(
-                position_fen,
-                username,
-                play_as,
-                platform_name,
-                from_timestamp_seconds,
-                to_timestamp_seconds,
+                &position_fen,
+                &username,
+                &play_as,
+                &platform_name,
+                &from_timestamp_seconds,
+                &to_timestamp_seconds,
             )
             .await;
 

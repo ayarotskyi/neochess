@@ -4,12 +4,12 @@ use std::ops::ControlFlow;
 
 use crate::domain::game::models::{errors::InvalidPgnError, fen::Fen};
 
-pub struct PositionVisitor {
-    pgn: String,
+pub struct PositionVisitor<'a> {
+    pgn: &'a str,
 }
 
-impl PositionVisitor {
-    pub fn new(pgn: String) -> Self {
+impl<'a> PositionVisitor<'a> {
+    pub fn new(pgn: &'a str) -> Self {
         Self { pgn: pgn }
     }
 }
@@ -25,7 +25,7 @@ pub struct PositionMovetext {
     pub result: Vec<PositionMetadata>,
 }
 
-impl Visitor for PositionVisitor {
+impl Visitor for PositionVisitor<'_> {
     type Tags = ();
     type Movetext = PositionMovetext;
     type Output = Result<Vec<PositionMetadata>, InvalidPgnError>;
@@ -55,7 +55,9 @@ impl Visitor for PositionVisitor {
             Ok(mv) => {
                 movetext.chess = match pos.play(mv) {
                     Ok(chess) => chess,
-                    Err(_) => return ControlFlow::Break(Err(InvalidPgnError(self.pgn.clone()))),
+                    Err(_) => {
+                        return ControlFlow::Break(Err(InvalidPgnError(self.pgn.to_string())));
+                    }
                 };
                 let next_fen = shakmaty::fen::Fen::try_from_setup(
                     movetext.chess.to_setup(shakmaty::EnPassantMode::Always),
@@ -69,11 +71,13 @@ impl Visitor for PositionVisitor {
                             next_move_uci: None,
                         })
                     }
-                    Err(_) => return ControlFlow::Break(Err(InvalidPgnError(self.pgn.clone()))),
+                    Err(_) => {
+                        return ControlFlow::Break(Err(InvalidPgnError(self.pgn.to_string())));
+                    }
                 };
                 ControlFlow::Continue(())
             }
-            _ => ControlFlow::Break(Err(InvalidPgnError(self.pgn.clone()))),
+            _ => ControlFlow::Break(Err(InvalidPgnError(self.pgn.to_string()))),
         }
     }
 

@@ -5,3 +5,5 @@ CREATE TABLE game_position (
     next_move_uci TEXT,
     PRIMARY KEY(game_id, position_id, move_idx)
 );
+CREATE INDEX game_index ON game_position(game_id);
+CREATE INDEX postiion_index ON game_position(position_id);

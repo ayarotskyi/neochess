@@ -1,5 +1,6 @@
 use chrono::{DateTime, Datelike};
 use rayon::prelude::*;
+use tokio::task::JoinSet;
 
 use crate::domain::{
     game::models::game::Color,
@@ -58,46 +59,37 @@ impl ChessComClient {
         &self,
         archives: Vec<String>,
     ) -> Result<Vec<NewGame>, PlatformError> {
-        let tasks = archives
-            .iter()
-            .map(|archive_url| {
-                let client = self.client.clone();
-                let url = archive_url.clone();
-                tokio::spawn(async move {
-                    let response = client
-                        .get(&url)
-                        .send()
-                        .await
-                        .map_err(|e| PlatformError::NetworkError(e.to_string()))?
-                        .error_for_status()
-                        .map_err(|e| PlatformError::ApiError(e.to_string()))?;
+        let mut join_set = JoinSet::new();
+        archives.iter().for_each(|archive_url| {
+            let client = self.client.clone();
+            let url = archive_url.clone();
+            join_set.spawn(async move {
+                let response = client
+                    .get(&url)
+                    .send()
+                    .await
+                    .map_err(|e| PlatformError::NetworkError(e.to_string()))?
+                    .error_for_status()
+                    .map_err(|e| PlatformError::ApiError(e.to_string()))?;
 
-                    let archive: ChessComArchiveResponse = response.json().await.map_err(|e| {
-                        PlatformError::ParseError(format!("Failed to parse games: {}", e))
-                    })?;
+                let archive: ChessComArchiveResponse = response.json().await.map_err(|e| {
+                    PlatformError::ParseError(format!("Failed to parse games: {}", e))
+                })?;
 
-                    let games = archive
-                        .games
-                        .into_iter()
-                        .map(|game| game.into())
-                        .collect::<Vec<NewGame>>();
-                    println!("finished fetching {}", url);
+                let games = archive
+                    .games
+                    .into_iter()
+                    .map(|game| game.into())
+                    .collect::<Vec<NewGame>>();
 
-                    Ok::<Vec<NewGame>, PlatformError>(games)
-                })
-            })
-            .collect::<Vec<_>>();
+                Ok::<Vec<NewGame>, PlatformError>(games)
+            });
+        });
 
         let mut new_games = Vec::new();
 
-        for task in tasks {
-            let result = task
-                .await
-                .map_err(|err| PlatformError::Unknown(err.into()))?;
-            match result {
-                Ok(games) => new_games.extend(games),
-                Err(e) => return Err(e),
-            };
+        while let Some(result) = join_set.join_next().await {
+            new_games.extend(result.map_err(|err| PlatformError::Unknown(err.into()))??);
         }
 
         Ok(new_games)
