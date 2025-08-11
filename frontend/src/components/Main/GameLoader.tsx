@@ -1,4 +1,6 @@
 import {
+  Flex,
+  Progress,
   Spinner,
   Stack,
   Text,
@@ -6,58 +8,45 @@ import {
   type StackProps,
 } from '@chakra-ui/react';
 import LogoTitle from '../LogoTitle';
-import { useMutation } from '@apollo/client';
+import { useSubscription } from '@apollo/client';
 import { gql } from '@/__generated__';
-import { useCallback, useContext, useEffect } from 'react';
+import { useContext } from 'react';
 import { useNavigate } from 'react-router';
 import { PLATFORM_DISPLAY_NAMES } from '@/constants';
 import { toaster } from '../ui/toaster';
 import ParamsContext from '@/contexts/ParamsContext';
 
 type Props = StackProps & {
-  onDataLoaded: () => void;
+  onComplete: () => void;
 };
 
 const UPDATE_USER_GAMES = gql(`
-  mutation UpdateUserGames($username: String!, $platformName: PlatformName!) {
+  subscription UpdateUserGames($username: String!, $platformName: PlatformName!) {
     updateUserGames(username: $username, platformName: $platformName)
   }
 `);
 
-const GameLoader = ({ onDataLoaded, ...props }: Props) => {
+const GameLoader = ({ onComplete, ...props }: Props) => {
   const { username, platformName } = useContext(ParamsContext);
 
-  const [mutate] = useMutation(UPDATE_USER_GAMES, {
+  const navigate = useNavigate();
+
+  const { data } = useSubscription(UPDATE_USER_GAMES, {
     variables: {
       username,
       platformName,
     },
+    onError: () => {
+      navigate('/');
+      toaster.create({
+        title: `Failed to fetch games for @${username}`,
+        type: 'error',
+      });
+    },
+    onComplete: () => {
+      onComplete();
+    },
   });
-
-  const navigate = useNavigate();
-
-  const onError = useCallback(() => {
-    navigate('/');
-    toaster.create({
-      title: `Failed to fetch games for @${username}`,
-      type: 'error',
-    });
-  }, [navigate, username]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await mutate();
-        if (result.data?.updateUserGames !== undefined) {
-          onDataLoaded();
-        } else {
-          onError();
-        }
-      } catch {
-        onError();
-      }
-    })();
-  }, [mutate, onDataLoaded, onError]);
 
   return (
     <VStack flex={1} spaceY="2rem" align="center" justify="center" {...props}>
@@ -85,6 +74,17 @@ const GameLoader = ({ onDataLoaded, ...props }: Props) => {
         >
           Fetching games for @{username}
         </Text>
+        <Flex alignSelf="stretch">
+          <Progress.Root
+            defaultValue={0}
+            value={(data?.updateUserGames ?? 0) * 100}
+            flex={1}
+          >
+            <Progress.Track>
+              <Progress.Range bg="linear-gradient(to right, #06b6d4, #a855f7)" />
+            </Progress.Track>
+          </Progress.Root>
+        </Flex>
       </Stack>
     </VStack>
   );

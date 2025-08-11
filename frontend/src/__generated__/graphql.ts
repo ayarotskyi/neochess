@@ -31,19 +31,6 @@ export type GraphQlMoveStat = {
   wins: Scalars['Int']['output'];
 };
 
-/** The root mutation object of the schema */
-export type Mutation = {
-  __typename?: 'Mutation';
-  updateUserGames: Scalars['Int']['output'];
-};
-
-
-/** The root mutation object of the schema */
-export type MutationUpdateUserGamesArgs = {
-  platformName: PlatformName;
-  username: Scalars['String']['input'];
-};
-
 export enum PlatformName {
   ChessCom = 'CHESS_COM'
 }
@@ -65,13 +52,26 @@ export type QueryGetMoveStatsArgs = {
   username: Scalars['String']['input'];
 };
 
-export type UpdateUserGamesMutationVariables = Exact<{
+/** The root subscription object of the schema */
+export type Subscription = {
+  __typename?: 'Subscription';
+  updateUserGames: Scalars['Float']['output'];
+};
+
+
+/** The root subscription object of the schema */
+export type SubscriptionUpdateUserGamesArgs = {
+  platformName: PlatformName;
+  username: Scalars['String']['input'];
+};
+
+export type UpdateUserGamesSubscriptionVariables = Exact<{
   username: Scalars['String']['input'];
   platformName: PlatformName;
 }>;
 
 
-export type UpdateUserGamesMutation = { __typename?: 'Mutation', updateUserGames: number };
+export type UpdateUserGamesSubscription = { __typename?: 'Subscription', updateUserGames: number };
 
 export type GetMoveStatsQueryVariables = Exact<{
   positionFen: Scalars['String']['input'];
@@ -86,5 +86,5 @@ export type GetMoveStatsQueryVariables = Exact<{
 export type GetMoveStatsQuery = { __typename?: 'Query', getMoveStats: Array<{ __typename?: 'GraphQLMoveStat', moveUci: string, avgOpponentElo: number, wins: number, total: number, draws: number, lastPlayedAt: number }> };
 
 
-export const UpdateUserGamesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateUserGames"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"username"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"platformName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PlatformName"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateUserGames"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"username"},"value":{"kind":"Variable","name":{"kind":"Name","value":"username"}}},{"kind":"Argument","name":{"kind":"Name","value":"platformName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"platformName"}}}]}]}}]} as unknown as DocumentNode<UpdateUserGamesMutation, UpdateUserGamesMutationVariables>;
+export const UpdateUserGamesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"UpdateUserGames"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"username"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"platformName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PlatformName"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateUserGames"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"username"},"value":{"kind":"Variable","name":{"kind":"Name","value":"username"}}},{"kind":"Argument","name":{"kind":"Name","value":"platformName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"platformName"}}}]}]}}]} as unknown as DocumentNode<UpdateUserGamesSubscription, UpdateUserGamesSubscriptionVariables>;
 export const GetMoveStatsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMoveStats"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"positionFen"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"username"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"playAs"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Color"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"platformName"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PlatformName"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fromTimestampSeconds"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"toTimestampSeconds"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getMoveStats"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"positionFen"},"value":{"kind":"Variable","name":{"kind":"Name","value":"positionFen"}}},{"kind":"Argument","name":{"kind":"Name","value":"username"},"value":{"kind":"Variable","name":{"kind":"Name","value":"username"}}},{"kind":"Argument","name":{"kind":"Name","value":"playAs"},"value":{"kind":"Variable","name":{"kind":"Name","value":"playAs"}}},{"kind":"Argument","name":{"kind":"Name","value":"platformName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"platformName"}}},{"kind":"Argument","name":{"kind":"Name","value":"fromTimestampSeconds"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fromTimestampSeconds"}}},{"kind":"Argument","name":{"kind":"Name","value":"toTimestampSeconds"},"value":{"kind":"Variable","name":{"kind":"Name","value":"toTimestampSeconds"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"moveUci"}},{"kind":"Field","name":{"kind":"Name","value":"avgOpponentElo"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"draws"}},{"kind":"Field","name":{"kind":"Name","value":"lastPlayedAt"}}]}}]}}]} as unknown as DocumentNode<GetMoveStatsQuery, GetMoveStatsQueryVariables>;

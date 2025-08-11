@@ -15,10 +15,10 @@ const Main = (props: StackProps) => {
     (key) => platformNameString === PLATFORM_URLS[key as PlatformName],
   ) as PlatformName | undefined;
 
-  const [isDataLoaded, setDataLoaded] = useState(false);
+  const [areGamesLoaded, setGamesLoaded] = useState(false);
 
-  const onDataLoaded = useCallback(() => {
-    setDataLoaded(true);
+  const onGamesLoaded = useCallback(() => {
+    setGamesLoaded(true);
   }, []);
 
   const paramsContextValue = useMemo(
@@ -36,8 +36,8 @@ const Main = (props: StackProps) => {
     <Navigate to="/" replace />
   ) : (
     <ParamsContext value={paramsContextValue}>
-      {!isDataLoaded ? (
-        <GameLoader onDataLoaded={onDataLoaded} />
+      {!areGamesLoaded ? (
+        <GameLoader onComplete={onGamesLoaded} />
       ) : (
         <HStack
           align="stretch"
