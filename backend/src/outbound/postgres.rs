@@ -5,11 +5,7 @@ use chrono::{DateTime, Utc};
 use pgn_reader::Reader;
 use rayon::prelude::*;
 use sqlx::{Pool, Row, pool::PoolConnection, postgres::PgRow};
-use std::{
-    io,
-    sync::{Arc, atomic::AtomicI16},
-    time::Instant,
-};
+use std::io;
 use thiserror::Error;
 use tokio::task::JoinSet;
 use uuid::Uuid;
@@ -29,8 +25,9 @@ use crate::{
         platform::models::PlatformName,
     },
     outbound::{
+        join_set_limited::JoinSetLimited,
         position_visitor::{PositionMetadata, PositionVisitor},
-        postgres::dto::{MoveStatDto, NewGameDto},
+        postgres::dto::{InsertedGameDto, MoveStatDto, NewGameDto},
     },
 };
 #[derive(Clone)]
@@ -134,9 +131,32 @@ impl Postgres {
     }
 
     async fn copy_positions(
-        position_relation_vec: Vec<PositionRelation>,
+        inserted_games: Vec<InsertedGameDto>,
         mut conn: PoolConnection<sqlx::Postgres>,
     ) -> Result<(), PostgresError> {
+        let position_relation_vec: Vec<PositionRelation> = inserted_games
+            .par_iter()
+            .filter_map(|inserted_game| {
+                let mut reader = Reader::new(io::Cursor::new(&inserted_game.pgn));
+                let metadata = match reader.read_game(&mut PositionVisitor::new(&inserted_game.pgn))
+                {
+                    Ok(option) => match option {
+                        Some(result) => match result {
+                            Ok(result) => result,
+                            Err(_) => return None,
+                        },
+                        None => return None,
+                    },
+                    Err(_) => return None,
+                };
+
+                return Some(PositionRelation {
+                    game_id: inserted_game.id,
+                    metadata,
+                });
+            })
+            .collect::<Vec<_>>();
+
         let mut copy_in = conn
             .copy_in_raw(
                 "COPY game_position 
@@ -167,8 +187,6 @@ impl Postgres {
         platform_name: &PlatformName,
         username: &str,
     ) -> Result<Vec<Uuid>, PostgresError> {
-        let instant = Instant::now();
-
         let games_temp_table_name = format!(
             "temp_game_{}_{}",
             username,
@@ -200,12 +218,7 @@ impl Postgres {
         .execute(&self.pool)
         .await?;
 
-        println!("created temp table in {:?}", instant.elapsed());
-
-        let instant = Instant::now();
         let mut join_set = JoinSet::new();
-        let count = Arc::new(AtomicI16::new(0));
-        let amount = 8;
         new_games
             .chunks(new_games.len() / 8)
             .for_each(|new_games_chunk| {
@@ -216,97 +229,44 @@ impl Postgres {
                     .collect::<_>();
                 let games_temp_table_name = games_temp_table_name.clone();
 
-                let count = count.clone();
                 join_set.spawn(async move {
                     let conn = pool.acquire().await?;
                     let res = Self::copy_games(new_game_dto_vec, games_temp_table_name, conn).await;
-                    count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    println!("finished copying games {:?} / {}", count, amount);
                     res
                 });
             });
 
-        println!("created tasks for copying games in {:?}", instant.elapsed());
-
-        let instant = Instant::now();
         while let Some(result) = join_set.join_next().await {
             result??;
         }
-        println!("finished copying games in {:?}", instant.elapsed());
 
-        let instant = Instant::now();
-        let game_entries: Vec<(Uuid, String, DateTime<Utc>)> = sqlx::query(&format!(
+        let inserted_games: Vec<InsertedGameDto> = sqlx::query_as(&format!(
             "INSERT INTO game
         SELECT * FROM \"{}\"
         ON CONFLICT DO NOTHING
         RETURNING id, pgn, finished_at",
             games_temp_table_name
         ))
-        .map(|row: PgRow| (row.get("id"), row.get("pgn"), row.get("finished_at")))
         .fetch_all(&self.pool)
         .await?;
-        println!(
-            "finished inserting games from temp table in {:?}",
-            instant.elapsed()
-        );
 
-        let instant = Instant::now();
-        let position_relation_vec: Vec<PositionRelation> = game_entries
-            .par_iter()
-            .filter_map(|(game_id, pgn, _)| {
-                let mut reader = Reader::new(io::Cursor::new(pgn));
-                let metadata = match reader.read_game(&mut PositionVisitor::new(pgn)) {
-                    Ok(option) => match option {
-                        Some(result) => match result {
-                            Ok(result) => result,
-                            Err(_) => return None,
-                        },
-                        None => return None,
-                    },
-                    Err(_) => return None,
-                };
-
-                return Some(PositionRelation {
-                    game_id: *game_id,
-                    metadata,
-                });
-            })
-            .collect::<Vec<_>>();
-        println!("{}", position_relation_vec.len());
-        println!(
-            "finished creating position relation vector in {:?}",
-            instant.elapsed()
-        );
-
-        let instant = Instant::now();
-        let mut join_set = JoinSet::new();
-        let count = Arc::new(AtomicI16::new(0));
-        let amount = 8;
-        position_relation_vec
-            .chunks(position_relation_vec.len() / 8)
-            .for_each(|position_relation_chunk| {
+        let connections_limit = 8;
+        let mut join_set = JoinSetLimited::new(
+            inserted_games.chunks(300).map(|inserted_games_chunk| {
                 let pool = self.pool.clone();
-                let position_relation_vec = position_relation_chunk.to_vec().clone();
+                let inserted_games = inserted_games_chunk.to_vec();
 
-                let count = count.clone();
-                join_set.spawn(async move {
+                async move {
                     let conn = pool.acquire().await?;
-                    let res = Self::copy_positions(position_relation_vec, conn).await;
-                    count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    println!("finished copying positions {:?} / {}", count, amount);
-                    res
-                });
-            });
-        println!(
-            "finished creating position copying tasks in {:?}",
-            instant.elapsed()
+                    Self::copy_positions(inserted_games, conn).await
+                }
+            }),
+            connections_limit,
         );
 
-        let instant = Instant::now();
         while let Some(result) = join_set.join_next().await {
             result??;
         }
-        println!("finished copying positions in {:?}", instant.elapsed());
 
         sqlx::query(&format!(
             "DROP TABLE IF EXISTS \"{}\";",
@@ -315,9 +275,9 @@ impl Postgres {
         .execute(&self.pool)
         .await?;
 
-        return Ok(game_entries
+        return Ok(inserted_games
             .iter()
-            .map(|game_entry| game_entry.0)
+            .map(|inserted_game| inserted_game.id)
             .collect::<_>());
     }
 

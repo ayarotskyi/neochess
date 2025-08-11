@@ -118,3 +118,10 @@ impl Into<MoveStat> for MoveStatDto {
         )
     }
 }
+
+#[derive(sqlx::FromRow, Clone)]
+pub struct InsertedGameDto {
+    pub id: uuid::Uuid,
+    pub pgn: String,
+    pub finished_at: chrono::DateTime<chrono::Utc>,
+}
