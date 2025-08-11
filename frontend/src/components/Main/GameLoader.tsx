@@ -48,6 +48,8 @@ const GameLoader = ({ onComplete, ...props }: Props) => {
     },
   });
 
+  const progressValue = (data?.updateUserGames ?? 0) * 100;
+
   return (
     <VStack flex={1} spaceY="2rem" align="center" justify="center" {...props}>
       <LogoTitle />
@@ -75,14 +77,25 @@ const GameLoader = ({ onComplete, ...props }: Props) => {
           Fetching games for @{username}
         </Text>
         <Flex alignSelf="stretch">
-          <Progress.Root
-            defaultValue={0}
-            value={(data?.updateUserGames ?? 0) * 100}
-            flex={1}
-          >
-            <Progress.Track>
-              <Progress.Range bg="linear-gradient(to right, #06b6d4, #a855f7)" />
+          <Progress.Root defaultValue={0} value={progressValue} flex={1}>
+            <Progress.Track bg="#1f2937" borderRadius="full" h="0.5rem">
+              <Progress.Range
+                bg="linear-gradient(to right, #06b6d4, #a855f7)"
+                boxShadow="0 0 10px rgba(0,255,255,0.5)"
+              />
             </Progress.Track>
+            <Progress.Label mt="1rem" w="100%">
+              <Text
+                color="#67e8f9"
+                textStyle="mono"
+                fontSize="0.875rem"
+                lineHeight="1.25rem"
+                textAlign="center"
+                mx="auto"
+              >
+                {Math.ceil(progressValue)}% Complete
+              </Text>
+            </Progress.Label>
           </Progress.Root>
         </Flex>
       </Stack>
