@@ -1,6 +1,3 @@
-use chrono::{DateTime, Datelike};
-use tokio::sync::mpsc::{Receiver, channel};
-
 use crate::domain::{
     game::models::game::Color,
     game::models::new_game::NewGame,
@@ -9,9 +6,14 @@ use crate::domain::{
         ports::PlatformApiClient,
     },
 };
+use chrono::{DateTime, Datelike};
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
+use std::time::Duration;
+use tokio::sync::mpsc::{Receiver, channel};
 
 pub struct ChessComClient {
-    client: reqwest::Client,
+    client: ClientWithMiddleware,
 }
 
 impl ChessComClient {
@@ -22,12 +24,19 @@ impl ChessComClient {
             reqwest::header::USER_AGENT,
             reqwest::header::HeaderValue::from_static("neochess/0.1"),
         );
-        Self {
-            client: reqwest::Client::builder()
+
+        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
+        let client = ClientBuilder::new(
+            reqwest::Client::builder()
                 .default_headers(headers)
+                .timeout(Duration::from_secs(10))
                 .build()
                 .unwrap(),
-        }
+        )
+        // Retry failed requests.
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build();
+        Self { client }
     }
 
     async fn fetch_player_archives(
