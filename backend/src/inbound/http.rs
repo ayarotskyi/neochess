@@ -21,7 +21,7 @@ pub struct HttpServerConfig {
 }
 
 struct AppData<GS: GameService, PS: PlatformService> {
-    pub schema: Schema,
+    pub schema: Arc<Schema>,
     pub game_service: Arc<GS>,
     pub platform_service: Arc<PS>,
 }
@@ -42,7 +42,7 @@ impl HttpServer {
             server: actix_web::HttpServer::new(move || {
                 App::new()
                     .app_data(Data::new(AppData {
-                        schema: schema(),
+                        schema: Arc::new(schema()),
                         game_service: game_service_arc.clone(),
                         platform_service: platform_service_arc.clone(),
                     }))
@@ -58,14 +58,17 @@ impl HttpServer {
                     .wrap(middleware::Compress::default())
                     .wrap(middleware::Logger::default())
                     .service(
+                        web::resource("/subscriptions")
+                            .route(web::get().to(handlers::subscriptions::<GS, PS>)),
+                    )
+                    .service(
                         web::resource("/graphql")
                             .route(web::post().to(handlers::graphql::<GS, PS>))
                             .route(web::get().to(handlers::graphql::<GS, PS>)),
                     )
-                    .service(
-                        web::resource("/playground")
-                            .route(web::get().to(|| handlers::playground("/graphql"))),
-                    )
+                    .service(web::resource("/playground").route(
+                        web::get().to(|| handlers::playground("/graphql", "/subscriptions")),
+                    ))
             })
             .bind(config.addr)
             .context(format!("failed to listen on {}", config.addr))?

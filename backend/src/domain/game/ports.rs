@@ -1,25 +1,26 @@
 use async_trait::async_trait;
-use uuid::Uuid;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::domain::{
     game::models::{
-        errors::{GameRepositoryError, InvalidFenError},
+        errors::{GameRepositoryError, InvalidFenError, StoreGamesError},
         fen::Fen,
         game::Color,
         move_stat::MoveStat,
         new_game::NewGame,
     },
-    platform::models::PlatformName,
+    platform::models::{PlatformError, PlatformName},
 };
 
 #[async_trait]
 pub trait GameRepository: Send + Sync + 'static {
     async fn store_games(
         &self,
-        games: Vec<NewGame>,
         platform_name: &PlatformName,
         username: &str,
-    ) -> Result<Vec<Uuid>, GameRepositoryError>;
+        game_receiver: Receiver<Result<Vec<NewGame>, PlatformError>>,
+        progress_sender: Sender<usize>,
+    ) -> Result<(), GameRepositoryError>;
 
     async fn get_latest_game_timestamp_seconds(
         &self,
@@ -42,10 +43,11 @@ pub trait GameRepository: Send + Sync + 'static {
 pub trait GameService: Send + Sync + 'static {
     async fn store_games(
         &self,
-        games: Vec<NewGame>,
         platform_name: &PlatformName,
         username: &str,
-    ) -> Result<Vec<Uuid>, GameRepositoryError>;
+        game_receiver: Receiver<Result<Vec<NewGame>, PlatformError>>,
+        progress_sender: Sender<usize>,
+    ) -> Result<(), StoreGamesError>;
 
     async fn get_latest_game_timestamp_seconds(
         &self,

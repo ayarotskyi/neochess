@@ -1,10 +1,12 @@
 mod dto;
-mod mutation;
 mod query;
+mod subscription;
 
-use crate::domain::{game::ports::GameService, platform::ports::PlatformService};
-use juniper::{Context, EmptySubscription, RootNode};
-use mutation::Mutation;
+use crate::{
+    domain::{game::ports::GameService, platform::ports::PlatformService},
+    inbound::graphql::subscription::Subscription,
+};
+use juniper::{Context, EmptyMutation, RootNode};
 use query::Query;
 use std::sync::Arc;
 
@@ -27,8 +29,8 @@ impl GraphQLContext {
 
 impl Context for GraphQLContext {}
 
-pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<GraphQLContext>>;
+pub type Schema = RootNode<'static, Query, EmptyMutation<GraphQLContext>, Subscription>;
 
 pub fn schema() -> Schema {
-    Schema::new(Query, Mutation, EmptySubscription::new())
+    Schema::new(Query, EmptyMutation::new(), Subscription)
 }

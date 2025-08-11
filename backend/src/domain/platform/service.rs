@@ -1,3 +1,5 @@
+use tokio::sync::mpsc::Receiver;
+
 use crate::domain::{
     game::models::new_game::NewGame,
     platform::{
@@ -25,7 +27,7 @@ impl PlatformService for Service {
         user_name: String,
         from_timestamp_seconds: Option<u64>,
         platform_name: PlatformName,
-    ) -> Result<Vec<NewGame>, PlatformError> {
+    ) -> Result<(usize, Receiver<Result<Vec<NewGame>, PlatformError>>), PlatformError> {
         let client = self
             .client_map
             .get(&platform_name)

@@ -201,6 +201,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-ws"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3a1fb4f9f2794b0aadaf2ba5f14a6f034c7e86957b458c506a8cb75953f2d99"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-web",
+ "bytestring",
+ "futures-core",
+ "tokio",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1375,9 +1389,11 @@ checksum = "457190a70f2a8d7c6d9ae8a5cfc134909c498c335dbb751a147eec7a513faced"
 dependencies = [
  "actix-http",
  "actix-web",
+ "actix-ws",
  "anyhow",
  "futures",
  "juniper",
+ "juniper_graphql_ws",
  "serde",
  "serde_json",
 ]
@@ -1392,6 +1408,28 @@ dependencies = [
  "quote",
  "syn",
  "url",
+]
+
+[[package]]
+name = "juniper_graphql_ws"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "709eb11c716072f5c9fcbfa705dd684bd3c070943102f9fc56ccb812a36ba017"
+dependencies = [
+ "juniper",
+ "juniper_subscriptions",
+ "serde",
+ "tokio",
+]
+
+[[package]]
+name = "juniper_subscriptions"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6208a839bd4ca2131924a238311d088d6604ea267c0917903392bad7b70a92c"
+dependencies = [
+ "futures",
+ "juniper",
 ]
 
 [[package]]
@@ -1548,6 +1586,8 @@ dependencies = [
  "chrono",
  "juniper",
  "juniper_actix",
+ "juniper_graphql_ws",
+ "juniper_subscriptions",
  "pgcopy",
  "pgn-reader",
  "rayon",
@@ -1560,6 +1600,7 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "uuid 1.17.0",
 ]
 

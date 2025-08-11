@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use uuid::Uuid;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::domain::{
     game::{
         models::{
-            errors::{GameRepositoryError, InvalidFenError},
+            errors::{GameRepositoryError, InvalidFenError, StoreGamesError},
             fen::{Fen, FenValidator},
             game::Color,
             move_stat::MoveStat,
@@ -12,7 +12,7 @@ use crate::domain::{
         },
         ports::{GameRepository, GameService},
     },
-    platform::models::PlatformName,
+    platform::models::{PlatformError, PlatformName},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -46,17 +46,21 @@ where
 {
     async fn store_games(
         &self,
-        games: Vec<NewGame>,
         platform_name: &PlatformName,
         username: &str,
-    ) -> Result<Vec<Uuid>, GameRepositoryError> {
-        let result = self.repo.store_games(games, platform_name, username).await;
+        game_receiver: Receiver<Result<Vec<NewGame>, PlatformError>>,
+        progress_sender: Sender<usize>,
+    ) -> Result<(), StoreGamesError> {
+        let result = self
+            .repo
+            .store_games(platform_name, username, game_receiver, progress_sender)
+            .await;
 
         let _ = result
             .as_ref()
             .inspect_err(|err| eprintln!("failed to store games: {}", *err));
 
-        return result;
+        Ok(())
     }
 
     async fn get_latest_game_timestamp_seconds(

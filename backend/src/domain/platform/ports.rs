@@ -3,6 +3,7 @@ use crate::domain::{
     platform::models::{PlatformError, PlatformName},
 };
 use async_trait::async_trait;
+use tokio::sync::mpsc::Receiver;
 
 #[async_trait]
 pub trait PlatformApiClient: Send + Sync + 'static {
@@ -10,7 +11,7 @@ pub trait PlatformApiClient: Send + Sync + 'static {
         &self,
         user_name: String,
         from_timestamp_seconds: Option<u64>,
-    ) -> Result<Vec<NewGame>, PlatformError>;
+    ) -> Result<(usize, Receiver<Result<Vec<NewGame>, PlatformError>>), PlatformError>;
 }
 
 #[async_trait]
@@ -20,5 +21,5 @@ pub trait PlatformService: Send + Sync + 'static {
         user_name: String,
         from_timestamp_seconds: Option<u64>,
         platform_name: PlatformName,
-    ) -> Result<Vec<NewGame>, PlatformError>;
+    ) -> Result<(usize, Receiver<Result<Vec<NewGame>, PlatformError>>), PlatformError>;
 }

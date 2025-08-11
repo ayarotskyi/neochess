@@ -1,6 +1,5 @@
 use chrono::{DateTime, Datelike};
-use rayon::prelude::*;
-use tokio::task::JoinSet;
+use tokio::sync::mpsc::{Receiver, channel};
 
 use crate::domain::{
     game::models::game::Color,
@@ -55,44 +54,58 @@ impl ChessComClient {
             .map_err(|e| PlatformError::ParseError(format!("Failed to parse archives: {}", e)))
     }
 
-    async fn fetch_games_by_archives(
+    fn fetch_games_by_archives(
         &self,
         archives: Vec<String>,
-    ) -> Result<Vec<NewGame>, PlatformError> {
-        let mut join_set = JoinSet::new();
-        archives.iter().for_each(|archive_url| {
-            let client = self.client.clone();
-            let url = archive_url.clone();
-            join_set.spawn(async move {
-                let response = client
-                    .get(&url)
-                    .send()
-                    .await
-                    .map_err(|e| PlatformError::NetworkError(e.to_string()))?
-                    .error_for_status()
-                    .map_err(|e| PlatformError::ApiError(e.to_string()))?;
+    ) -> Receiver<Result<Vec<NewGame>, PlatformError>> {
+        let (sender, receiver) = channel(1000);
 
-                let archive: ChessComArchiveResponse = response.json().await.map_err(|e| {
-                    PlatformError::ParseError(format!("Failed to parse games: {}", e))
-                })?;
+        let client = self.client.clone();
+        tokio::spawn(async move {
+            for archive_url in archives {
+                let response_result = client.get(&archive_url).send().await;
+                let response = match response_result {
+                    Ok(response) => response,
+                    Err(e) => {
+                        let _ = sender
+                            .send(Err(PlatformError::ApiError(e.to_string())))
+                            .await;
+                        break;
+                    }
+                };
 
-                let games = archive
-                    .games
-                    .into_iter()
-                    .map(|game| game.into())
-                    .collect::<Vec<NewGame>>();
+                let archive_result: Result<ChessComArchiveResponse, PlatformError> =
+                    match response.error_for_status() {
+                        Ok(response) => response
+                            .json()
+                            .await
+                            .map_err(|e| PlatformError::ParseError(e.to_string())),
+                        Err(e) => {
+                            let _ = sender
+                                .send(Err(PlatformError::ApiError(e.to_string())))
+                                .await;
+                            break;
+                        }
+                    };
 
-                Ok::<Vec<NewGame>, PlatformError>(games)
-            });
+                match archive_result {
+                    Ok(archive) => {
+                        let games = archive
+                            .games
+                            .into_iter()
+                            .map(|game| game.into())
+                            .collect::<Vec<NewGame>>();
+                        let _ = sender.send(Ok(games)).await;
+                    }
+                    Err(err) => {
+                        let _ = sender.send(Err(err)).await;
+                        break;
+                    }
+                }
+            }
         });
 
-        let mut new_games = Vec::new();
-
-        while let Some(result) = join_set.join_next().await {
-            new_games.extend(result.map_err(|err| PlatformError::Unknown(err.into()))??);
-        }
-
-        Ok(new_games)
+        receiver
     }
 
     fn filter_archives_by_timestamp(
@@ -166,7 +179,7 @@ impl PlatformApiClient for ChessComClient {
         &self,
         user_name: String,
         from_timestamp: Option<u64>,
-    ) -> Result<Vec<NewGame>, PlatformError> {
+    ) -> Result<(usize, Receiver<Result<Vec<NewGame>, PlatformError>>), PlatformError> {
         let archives_response = self.fetch_player_archives(user_name.clone()).await?;
 
         // Filter archives based on the from_timestamp
@@ -176,19 +189,7 @@ impl PlatformApiClient for ChessComClient {
             archives_response.archives
         };
 
-        let new_games = self
-            .fetch_games_by_archives(archives)
-            .await
-            .map(|new_games| {
-                new_games
-                    .into_par_iter()
-                    .filter(|game| {
-                        game.finished_at().timestamp() as u64 > from_timestamp.unwrap_or(0)
-                    })
-                    .collect::<Vec<NewGame>>()
-            });
-
-        new_games
+        Ok((archives.len(), self.fetch_games_by_archives(archives)))
     }
 }
 

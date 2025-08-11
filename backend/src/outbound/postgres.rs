@@ -4,11 +4,10 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use pgn_reader::Reader;
 use rayon::prelude::*;
-use sqlx::{Pool, Row, pool::PoolConnection, postgres::PgRow};
+use sqlx::{PgConnection, Pool, Row, postgres::PgRow};
 use std::io;
 use thiserror::Error;
-use tokio::task::JoinSet;
-use uuid::Uuid;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::{
     domain::{
@@ -22,10 +21,9 @@ use crate::{
             },
             ports::GameRepository,
         },
-        platform::models::PlatformName,
+        platform::models::{PlatformError, PlatformName},
     },
     outbound::{
-        join_set_limited::JoinSetLimited,
         position_visitor::{PositionMetadata, PositionVisitor},
         postgres::dto::{InsertedGameDto, MoveStatDto, NewGameDto},
     },
@@ -52,23 +50,23 @@ impl Postgres {
         Ok(Self { pool })
     }
 
-    fn games_to_bytes(game_dto_vec: Vec<NewGameDto>) -> Result<Vec<u8>, PostgresError> {
+    fn games_to_bytes(new_game_dto_chunk: Vec<NewGameDto>) -> Result<Vec<u8>, PostgresError> {
         let mut buf: Vec<u8> = vec![];
         let mut encoder = pgcopy::Encoder::new(&mut buf);
         encoder.write_header().unwrap();
 
-        for game_dto in game_dto_vec {
+        for game_dto in new_game_dto_chunk {
             encoder.write_tuple(8)?;
-            encoder.write_str(game_dto.white)?;
+            encoder.write_str(&game_dto.white)?;
             encoder.write_smallint(game_dto.white_elo)?;
-            encoder.write_str(game_dto.black)?;
+            encoder.write_str(&game_dto.black)?;
             encoder.write_smallint(game_dto.black_elo)?;
-            match game_dto.winner {
+            match game_dto.winner.as_ref() {
                 Some(winner) => encoder.write_str(winner)?,
                 None => encoder.write_null()?,
             };
-            encoder.write_str(game_dto.platform_name)?;
-            encoder.write_str(game_dto.pgn)?;
+            encoder.write_str(&game_dto.platform_name)?;
+            encoder.write_str(&game_dto.pgn)?;
             encoder.write_timestamp_with_time_zone(game_dto.finished_at)?;
         }
 
@@ -103,9 +101,9 @@ impl Postgres {
     }
 
     async fn copy_games(
-        new_game_dto_vec: Vec<NewGameDto>,
-        temp_table_name: String,
-        mut conn: PoolConnection<sqlx::Postgres>,
+        new_game_dto_chunk: Vec<NewGameDto>,
+        temp_table_name: &str,
+        conn: &mut PgConnection,
     ) -> Result<(), PostgresError> {
         let mut copy_in = conn
             .copy_in_raw(&format!(
@@ -116,7 +114,9 @@ impl Postgres {
                 temp_table_name
             ))
             .await?;
-        let result = copy_in.send(Self::games_to_bytes(new_game_dto_vec)?).await;
+        let result = copy_in
+            .send(Self::games_to_bytes(new_game_dto_chunk)?)
+            .await;
 
         match result {
             Ok(_) => {
@@ -130,9 +130,84 @@ impl Postgres {
         Ok(())
     }
 
+    async fn save_games_from_receiver(
+        &self,
+        username: &str,
+        platform_name: &PlatformName,
+        mut game_receiver: Receiver<Result<Vec<NewGame>, PlatformError>>,
+        progress_sender: Sender<usize>,
+    ) -> Result<(), PostgresError> {
+        let mut tx = self.pool.begin().await?;
+        let games_temp_table_name = format!(
+            "temp_game_{}_{}",
+            username,
+            Into::<&'static str>::into(platform_name)
+        );
+
+        sqlx::query(&format!(
+            "DROP TABLE IF EXISTS \"{}\";",
+            games_temp_table_name
+        ))
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(&format!(
+            "CREATE TEMPORARY TABLE IF NOT EXISTS \"{}\" (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            white VARCHAR NOT NULL,
+            white_elo SMALLINT NOT NULL,
+            black VARCHAR NOT NULL,
+            black_elo SMALLINT NOT NULL,
+            winner CHAR(5),
+            platform_name VARCHAR NOT NULL,
+            pgn VARCHAR NOT NULL,
+            finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            UNIQUE (white, black, finished_at, platform_name)
+        );",
+            games_temp_table_name
+        ))
+        .execute(&mut *tx)
+        .await?;
+
+        while let Some(new_games) = game_receiver.recv().await {
+            Self::copy_games(
+                new_games?
+                    .into_iter()
+                    .map(|new_game| new_game.into())
+                    .collect::<_>(),
+                &games_temp_table_name,
+                &mut *tx,
+            )
+            .await?;
+
+            let inserted_games: Vec<InsertedGameDto> = sqlx::query_as(&format!(
+                "INSERT INTO game
+        SELECT * FROM \"{}\"
+        ON CONFLICT DO NOTHING
+        RETURNING id, pgn, finished_at",
+                games_temp_table_name
+            ))
+            .fetch_all(&mut *tx)
+            .await?;
+
+            let inserted_amount = inserted_games.len();
+
+            Self::copy_positions(inserted_games, &mut *tx).await?;
+
+            progress_sender
+                .send(inserted_amount)
+                .await
+                .map_err(|e| anyhow::anyhow!(e))?;
+        }
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
     async fn copy_positions(
         inserted_games: Vec<InsertedGameDto>,
-        mut conn: PoolConnection<sqlx::Postgres>,
+        conn: &mut PgConnection,
     ) -> Result<(), PostgresError> {
         let position_relation_vec: Vec<PositionRelation> = inserted_games
             .par_iter()
@@ -181,105 +256,105 @@ impl Postgres {
         Ok(())
     }
 
-    async fn save_games_distributed(
-        &self,
-        new_games: Vec<NewGame>,
-        platform_name: &PlatformName,
-        username: &str,
-    ) -> Result<Vec<Uuid>, PostgresError> {
-        let games_temp_table_name = format!(
-            "temp_game_{}_{}",
-            username,
-            Into::<&'static str>::into(platform_name)
-        );
+    // async fn save_games_distributed(
+    //     &self,
+    //     new_games: Vec<NewGame>,
+    //     platform_name: &PlatformName,
+    //     username: &str,
+    // ) -> Result<Vec<Uuid>, PostgresError> {
+    //     let games_temp_table_name = format!(
+    //         "temp_game_{}_{}",
+    //         username,
+    //         Into::<&'static str>::into(platform_name)
+    //     );
 
-        sqlx::query(&format!(
-            "DROP TABLE IF EXISTS \"{}\";",
-            games_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
+    //     sqlx::query(&format!(
+    //         "DROP TABLE IF EXISTS \"{}\";",
+    //         games_temp_table_name
+    //     ))
+    //     .execute(&self.pool)
+    //     .await?;
 
-        sqlx::query(&format!(
-            "CREATE UNLOGGED TABLE IF NOT EXISTS \"{}\" (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            white VARCHAR NOT NULL,
-            white_elo SMALLINT NOT NULL,
-            black VARCHAR NOT NULL,
-            black_elo SMALLINT NOT NULL,
-            winner CHAR(5),
-            platform_name VARCHAR NOT NULL,
-            pgn VARCHAR NOT NULL,
-            finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
-            UNIQUE (white, black, finished_at, platform_name)
-        );",
-            games_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
+    //     sqlx::query(&format!(
+    //         "CREATE UNLOGGED TABLE IF NOT EXISTS \"{}\" (
+    //         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    //         white VARCHAR NOT NULL,
+    //         white_elo SMALLINT NOT NULL,
+    //         black VARCHAR NOT NULL,
+    //         black_elo SMALLINT NOT NULL,
+    //         winner CHAR(5),
+    //         platform_name VARCHAR NOT NULL,
+    //         pgn VARCHAR NOT NULL,
+    //         finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    //         UNIQUE (white, black, finished_at, platform_name)
+    //     );",
+    //         games_temp_table_name
+    //     ))
+    //     .execute(&self.pool)
+    //     .await?;
 
-        let mut join_set = JoinSet::new();
-        new_games
-            .chunks(new_games.len() / 8)
-            .for_each(|new_games_chunk| {
-                let pool = self.pool.clone();
-                let new_game_dto_vec = new_games_chunk
-                    .iter()
-                    .map(|new_game| new_game.clone().into())
-                    .collect::<_>();
-                let games_temp_table_name = games_temp_table_name.clone();
+    //     let mut join_set = JoinSet::new();
+    //     new_games
+    //         .chunks(new_games.len() / 8)
+    //         .for_each(|new_games_chunk| {
+    //             let pool = self.pool.clone();
+    //             let new_game_dto_vec = new_games_chunk
+    //                 .iter()
+    //                 .map(|new_game| new_game.clone().into())
+    //                 .collect::<_>();
+    //             let games_temp_table_name = games_temp_table_name.clone();
 
-                join_set.spawn(async move {
-                    let conn = pool.acquire().await?;
-                    let res = Self::copy_games(new_game_dto_vec, games_temp_table_name, conn).await;
-                    res
-                });
-            });
+    //             join_set.spawn(async move {
+    //                 let conn = pool.acquire().await?;
+    //                 let res = Self::copy_games(new_game_dto_vec, games_temp_table_name, conn).await;
+    //                 res
+    //             });
+    //         });
 
-        while let Some(result) = join_set.join_next().await {
-            result??;
-        }
+    //     while let Some(result) = join_set.join_next().await {
+    //         result??;
+    //     }
 
-        let inserted_games: Vec<InsertedGameDto> = sqlx::query_as(&format!(
-            "INSERT INTO game
-        SELECT * FROM \"{}\"
-        ON CONFLICT DO NOTHING
-        RETURNING id, pgn, finished_at",
-            games_temp_table_name
-        ))
-        .fetch_all(&self.pool)
-        .await?;
+    //     let inserted_games: Vec<InsertedGameDto> = sqlx::query_as(&format!(
+    //         "INSERT INTO game
+    //     SELECT * FROM \"{}\"
+    //     ON CONFLICT DO NOTHING
+    //     RETURNING id, pgn, finished_at",
+    //         games_temp_table_name
+    //     ))
+    //     .fetch_all(&self.pool)
+    //     .await?;
 
-        let connections_limit = 8;
-        let mut join_set = JoinSetLimited::new(
-            inserted_games.chunks(300).map(|inserted_games_chunk| {
-                let pool = self.pool.clone();
-                let inserted_games = inserted_games_chunk.to_vec();
+    //     let connections_limit = 8;
+    //     let mut join_set = JoinSetLimited::new(
+    //         inserted_games.chunks(300).map(|inserted_games_chunk| {
+    //             let pool = self.pool.clone();
+    //             let inserted_games = inserted_games_chunk.to_vec();
 
-                async move {
-                    let conn = pool.acquire().await?;
-                    Self::copy_positions(inserted_games, conn).await
-                }
-            }),
-            connections_limit,
-        );
+    //             async move {
+    //                 let conn = pool.acquire().await?;
+    //                 Self::copy_positions(inserted_games, conn).await
+    //             }
+    //         }),
+    //         connections_limit,
+    //     );
 
-        while let Some(result) = join_set.join_next().await {
-            result??;
-        }
+    //     while let Some(result) = join_set.join_next().await {
+    //         result??;
+    //     }
 
-        sqlx::query(&format!(
-            "DROP TABLE IF EXISTS \"{}\";",
-            games_temp_table_name
-        ))
-        .execute(&self.pool)
-        .await?;
+    //     sqlx::query(&format!(
+    //         "DROP TABLE IF EXISTS \"{}\";",
+    //         games_temp_table_name
+    //     ))
+    //     .execute(&self.pool)
+    //     .await?;
 
-        return Ok(inserted_games
-            .iter()
-            .map(|inserted_game| inserted_game.id)
-            .collect::<_>());
-    }
+    //     return Ok(inserted_games
+    //         .iter()
+    //         .map(|inserted_game| inserted_game.id)
+    //         .collect::<_>());
+    // }
 
     async fn latest_game_timestamp_seconds_by_username(
         &self,
@@ -364,6 +439,8 @@ pub enum PostgresError {
     #[error(transparent)]
     SerializationError(#[from] std::io::Error),
     #[error(transparent)]
+    PlatformError(#[from] PlatformError),
+    #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }
 
@@ -382,16 +459,13 @@ impl From<PostgresError> for GameRepositoryError {
 impl GameRepository for Postgres {
     async fn store_games(
         &self,
-        games: Vec<NewGame>,
         platform_name: &PlatformName,
         username: &str,
-    ) -> Result<Vec<Uuid>, GameRepositoryError> {
-        if games.len() == 0 {
-            return Ok(Vec::new());
-        }
-
+        game_receiver: Receiver<Result<Vec<NewGame>, PlatformError>>,
+        progress_sender: Sender<usize>,
+    ) -> Result<(), GameRepositoryError> {
         Ok(self
-            .save_games_distributed(games, platform_name, username)
+            .save_games_from_receiver(username, platform_name, game_receiver, progress_sender)
             .await?)
     }
 
