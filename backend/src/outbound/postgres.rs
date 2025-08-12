@@ -265,8 +265,8 @@ impl Postgres {
             "SELECT MAX(finished_at) FROM game
         WHERE platform_name = $1
         AND (
-            white = $2
-            OR black = $2
+            LOWER(white) = LOWER($2)
+            OR LOWER(black) = LOWER($2)
         )",
         )
         .bind(Into::<&'static str>::into(platform_name))
