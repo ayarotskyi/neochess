@@ -51,16 +51,11 @@ where
         game_receiver: Receiver<Result<Vec<NewGame>, PlatformError>>,
         progress_sender: Sender<usize>,
     ) -> Result<(), StoreGamesError> {
-        let result = self
-            .repo
+        self.repo
             .store_games(platform_name, username, game_receiver, progress_sender)
-            .await;
-
-        let _ = result
-            .as_ref()
-            .inspect_err(|err| eprintln!("failed to store games: {}", *err));
-
-        Ok(())
+            .await
+            .inspect_err(|err| eprintln!("failed to store games: {}", *err))
+            .map_err(|err| err.into())
     }
 
     async fn get_latest_game_timestamp_seconds(
@@ -68,16 +63,11 @@ where
         platform_name: &PlatformName,
         username: &str,
     ) -> Result<Option<u64>, GameRepositoryError> {
-        let result = self
-            .repo
+        self.repo
             .get_latest_game_timestamp_seconds(platform_name, username)
-            .await;
-
-        let _ = result
-            .as_ref()
-            .inspect_err(|err| eprintln!("failed to get latest game timestamp: {}", *err));
-
-        return result;
+            .await
+            .inspect_err(|err| eprintln!("failed to get latest game timestamp: {}", *err))
+            .map_err(|err| err.into())
     }
 
     async fn get_move_stats(
@@ -89,8 +79,7 @@ where
         from_timestamp_seconds: Option<chrono::DateTime<chrono::Utc>>,
         to_timestamp_seconds: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<MoveStat>, GameRepositoryError> {
-        let result = self
-            .repo
+        self.repo
             .get_move_stats(
                 &position_fen,
                 &username,
@@ -99,13 +88,9 @@ where
                 &from_timestamp_seconds,
                 &to_timestamp_seconds,
             )
-            .await;
-
-        let _ = result
-            .as_ref()
-            .inspect_err(|err| eprintln!("failed to get move stats: {}", *err));
-
-        return result;
+            .await
+            .inspect_err(|err| eprintln!("failed to get move stats: {}", *err))
+            .map_err(|err| err.into())
     }
 
     fn parse_fen(&self, fen_str: String) -> Result<Fen, InvalidFenError> {

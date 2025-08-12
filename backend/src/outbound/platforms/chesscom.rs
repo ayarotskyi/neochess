@@ -79,7 +79,7 @@ impl ChessComClient {
                         let _ = sender
                             .send(Err(PlatformError::ApiError(e.to_string())))
                             .await;
-                        break;
+                        return;
                     }
                 };
 
@@ -89,11 +89,10 @@ impl ChessComClient {
                             .json()
                             .await
                             .map_err(|e| PlatformError::ParseError(e.to_string())),
-                        Err(e) => {
-                            let _ = sender
-                                .send(Err(PlatformError::ApiError(e.to_string())))
-                                .await;
-                            break;
+                        Err(_) => {
+                            // Ignore if Chess.com fails to resolve request
+                            let _ = sender.send(Ok(Vec::new())).await;
+                            continue;
                         }
                     };
 
@@ -104,11 +103,17 @@ impl ChessComClient {
                             .into_iter()
                             .map(|game| game.into())
                             .collect::<Vec<NewGame>>();
-                        let _ = sender.send(Ok(games)).await;
+                        let send_result = sender.send(Ok(games)).await;
+                        match send_result {
+                            Err(_) => {
+                                return;
+                            }
+                            _ => {}
+                        }
                     }
                     Err(err) => {
                         let _ = sender.send(Err(err)).await;
-                        break;
+                        return;
                     }
                 }
             }
