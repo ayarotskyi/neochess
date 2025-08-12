@@ -2,7 +2,7 @@ mod handlers;
 
 use crate::{
     domain::{game::ports::GameService, platform::ports::PlatformService},
-    inbound::graphql::{Schema, schema},
+    inbound::graphql::{Schema, game_update_cache::GameUpdateCache, schema},
 };
 use actix_cors::Cors;
 use actix_web::{
@@ -14,6 +14,7 @@ use actix_web::{
 };
 use anyhow::Context;
 use std::{net::SocketAddr, sync::Arc};
+use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HttpServerConfig {
@@ -24,6 +25,7 @@ struct AppData<GS: GameService, PS: PlatformService> {
     pub schema: Arc<Schema>,
     pub game_service: Arc<GS>,
     pub platform_service: Arc<PS>,
+    pub game_update_cache: Arc<Mutex<GameUpdateCache>>,
 }
 
 pub struct HttpServer {
@@ -38,6 +40,7 @@ impl HttpServer {
     ) -> anyhow::Result<Self> {
         let game_service_arc = Arc::new(game_service);
         let platform_service_arc = Arc::new(platform_service);
+        let game_update_cache_arc = Arc::new(Mutex::new(GameUpdateCache::new()));
         Ok(Self {
             server: actix_web::HttpServer::new(move || {
                 App::new()
@@ -45,6 +48,7 @@ impl HttpServer {
                         schema: Arc::new(schema()),
                         game_service: game_service_arc.clone(),
                         platform_service: platform_service_arc.clone(),
+                        game_update_cache: game_update_cache_arc.clone(),
                     }))
                     .wrap(
                         Cors::default()

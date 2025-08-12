@@ -31,7 +31,7 @@ sqlx = { version = "0.8", features = [
 rayon = "1.10.0"
 pgcopy = { version = "0.0.2", features = ["all"] }
 juniper_subscriptions = "0.17.0"
-tokio-stream = "0.1.17"
+tokio-stream = { version = "0.1.17", features = ["sync"] }
 juniper_graphql_ws = { version = "0.4.0", features = ["graphql-ws"] }
 reqwest-middleware = "0.4.2"
 reqwest-retry = "0.7.0"

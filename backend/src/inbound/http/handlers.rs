@@ -58,6 +58,7 @@ where
         &GraphQLContext::new(
             app_data.game_service.clone(),
             app_data.platform_service.clone(),
+            app_data.game_update_cache.clone(),
         ),
         req,
         payload,
@@ -76,6 +77,7 @@ where
     let context = GraphQLContext::new(
         app_data.game_service.clone(),
         app_data.platform_service.clone(),
+        app_data.game_update_cache.clone(),
     );
 
     let schema = app_data.schema.clone();

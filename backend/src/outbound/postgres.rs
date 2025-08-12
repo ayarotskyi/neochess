@@ -256,106 +256,6 @@ impl Postgres {
         Ok(())
     }
 
-    // async fn save_games_distributed(
-    //     &self,
-    //     new_games: Vec<NewGame>,
-    //     platform_name: &PlatformName,
-    //     username: &str,
-    // ) -> Result<Vec<Uuid>, PostgresError> {
-    //     let games_temp_table_name = format!(
-    //         "temp_game_{}_{}",
-    //         username,
-    //         Into::<&'static str>::into(platform_name)
-    //     );
-
-    //     sqlx::query(&format!(
-    //         "DROP TABLE IF EXISTS \"{}\";",
-    //         games_temp_table_name
-    //     ))
-    //     .execute(&self.pool)
-    //     .await?;
-
-    //     sqlx::query(&format!(
-    //         "CREATE UNLOGGED TABLE IF NOT EXISTS \"{}\" (
-    //         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    //         white VARCHAR NOT NULL,
-    //         white_elo SMALLINT NOT NULL,
-    //         black VARCHAR NOT NULL,
-    //         black_elo SMALLINT NOT NULL,
-    //         winner CHAR(5),
-    //         platform_name VARCHAR NOT NULL,
-    //         pgn VARCHAR NOT NULL,
-    //         finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    //         UNIQUE (white, black, finished_at, platform_name)
-    //     );",
-    //         games_temp_table_name
-    //     ))
-    //     .execute(&self.pool)
-    //     .await?;
-
-    //     let mut join_set = JoinSet::new();
-    //     new_games
-    //         .chunks(new_games.len() / 8)
-    //         .for_each(|new_games_chunk| {
-    //             let pool = self.pool.clone();
-    //             let new_game_dto_vec = new_games_chunk
-    //                 .iter()
-    //                 .map(|new_game| new_game.clone().into())
-    //                 .collect::<_>();
-    //             let games_temp_table_name = games_temp_table_name.clone();
-
-    //             join_set.spawn(async move {
-    //                 let conn = pool.acquire().await?;
-    //                 let res = Self::copy_games(new_game_dto_vec, games_temp_table_name, conn).await;
-    //                 res
-    //             });
-    //         });
-
-    //     while let Some(result) = join_set.join_next().await {
-    //         result??;
-    //     }
-
-    //     let inserted_games: Vec<InsertedGameDto> = sqlx::query_as(&format!(
-    //         "INSERT INTO game
-    //     SELECT * FROM \"{}\"
-    //     ON CONFLICT DO NOTHING
-    //     RETURNING id, pgn, finished_at",
-    //         games_temp_table_name
-    //     ))
-    //     .fetch_all(&self.pool)
-    //     .await?;
-
-    //     let connections_limit = 8;
-    //     let mut join_set = JoinSetLimited::new(
-    //         inserted_games.chunks(300).map(|inserted_games_chunk| {
-    //             let pool = self.pool.clone();
-    //             let inserted_games = inserted_games_chunk.to_vec();
-
-    //             async move {
-    //                 let conn = pool.acquire().await?;
-    //                 Self::copy_positions(inserted_games, conn).await
-    //             }
-    //         }),
-    //         connections_limit,
-    //     );
-
-    //     while let Some(result) = join_set.join_next().await {
-    //         result??;
-    //     }
-
-    //     sqlx::query(&format!(
-    //         "DROP TABLE IF EXISTS \"{}\";",
-    //         games_temp_table_name
-    //     ))
-    //     .execute(&self.pool)
-    //     .await?;
-
-    //     return Ok(inserted_games
-    //         .iter()
-    //         .map(|inserted_game| inserted_game.id)
-    //         .collect::<_>());
-    // }
-
     async fn latest_game_timestamp_seconds_by_username(
         &self,
         platform_name: &PlatformName,
@@ -399,7 +299,7 @@ impl Postgres {
                 WHERE game.platform_name = $2
                     AND game_position.fen = $3
                     AND game_position.next_move_uci IS NOT NULL
-                    AND {} = $4
+                    AND LOWER({}) = LOWER($4)
                     AND ($5 is NULL OR game.finished_at >= $5)
                     AND ($6 is NULL OR game.finished_at <= $6)
                 GROUP BY game_position.next_move_uci",

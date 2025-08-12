@@ -9,7 +9,7 @@ use crate::domain::{
     platform::models::PlatformName,
 };
 
-#[derive(GraphQLEnum, Clone)]
+#[derive(GraphQLEnum, Clone, PartialEq, Eq, Hash, Debug)]
 #[graphql(name = "PlatformName")]
 pub enum GraphQLPlatformName {
     ChessCom,
