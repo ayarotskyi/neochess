@@ -126,6 +126,7 @@ export const useGameStore = create<GameStoreType>((set, get) => ({
     set({
       fenStack: [fen.INITIAL_FEN],
       backtrackStep: 0,
+      selectedSquare: null,
     });
   },
   changeSide: () => {

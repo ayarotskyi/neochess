@@ -12,7 +12,7 @@ const httpLink = new HttpLink({
 });
 const wsLink = new GraphQLWsLink(
   createClient({
-    url: `${PUBLIC_API_URL.replace(/(^.*):\/\//, 'ws://')}/subscriptions`,
+    url: `${PUBLIC_API_URL.replace('http', 'ws')}/subscriptions`,
   }),
 );
 
