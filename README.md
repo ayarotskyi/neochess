@@ -4,6 +4,8 @@
 
 This application is greatly inspired by the [OpeningTree](https://www.openingtree.com/). The main difference is that the games are pre-processed and stored on the server side. You can test the demo application using [this link](https://neochess.onrender.com/) (the first request will be delayed for a while due to the server spinning up).
 
+![](./screenshot.png)
+
 # Features
 
 - The user is able to choose platform (for now it's just [Chess.com](https://www.chess.com/)) and load the games for a specific user.
